@@ -9,60 +9,67 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="style.css">
 </head>
-<body class="dark-mode" id="body">
-    <div id="loginScreen" class="fixed inset-0 z-50 flex items-center justify-center bg-black p-4 hidden">
-        <div class="card p-6 w-full max-w-sm">
-            <h2 class="text-2xl font-bold mb-4 text-center text-blue-500">Bienvenido</h2>
-            <input type="email" id="loginEmail" placeholder="Correo" class="w-full p-2 mb-3 rounded bg-gray-800 text-white border border-gray-700">
-            <input type="password" id="loginPass" placeholder="Contraseña" class="w-full p-2 mb-4 rounded bg-gray-800 text-white border border-gray-700">
-            <button onclick="login()" class="bg-blue-600 text-white w-full py-2 rounded mb-2 font-bold">Entrar</button>
-            <button onclick="registro()" class="text-sm text-gray-400 w-full text-center hover:text-white transition">¿No tienes cuenta? Regístrate</button>
+<body class="dark-mode bg-black text-white" id="body">
+    <div id="loginScreen" class="fixed inset-0 z-50 flex items-center justify-center bg-gray-900 p-4 hidden">
+        <div class="card bg-gray-800 p-8 rounded-xl shadow-2xl w-full max-w-sm border border-gray-700">
+            <div class="text-center mb-6">
+                <i class="fas fa-calendar-check text-5xl text-blue-500 mb-2"></i>
+                <h2 class="text-2xl font-bold">Turnos Chile</h2>
+                <p class="text-gray-400 text-sm">Ingresa para ver tus turnos</p>
+            </div>
+            <input type="email" id="loginEmail" placeholder="Correo" class="w-full p-3 mb-3 rounded bg-gray-700 border border-gray-600 focus:border-blue-500 outline-none transition">
+            <input type="password" id="loginPass" placeholder="Contraseña" class="w-full p-3 mb-6 rounded bg-gray-700 border border-gray-600 focus:border-blue-500 outline-none transition">
+            <button onclick="login()" class="bg-blue-600 hover:bg-blue-700 text-white w-full py-3 rounded-lg font-bold transition mb-4">Entrar</button>
+            <button onclick="registro()" class="text-sm text-gray-400 w-full text-center hover:underline">¿Eres nuevo? Regístrate aquí</button>
         </div>
     </div>
 
-    <div id="appContent" class="hidden">
+    <div id="appContent" class="hidden min-h-screen">
         <div class="container mx-auto px-4 py-6 max-w-6xl">
-            <div class="flex justify-between items-center mb-6">
-                <h1 class="text-2xl font-bold brand-gradient text-blue-400">Turnos Chile</h1>
-                <button onclick="cerrarSesion()" class="text-sm bg-red-600 px-3 py-1 rounded text-white font-bold">Cerrar Sesión</button>
-            </div>
+            <header class="flex justify-between items-center mb-8 bg-gray-800 p-4 rounded-lg border border-gray-700 shadow-lg">
+                <h1 class="text-xl md:text-2xl font-bold text-blue-400">
+                    <i class="fas fa-calendar-alt mr-2"></i>Mis Turnos
+                </h1>
+                <button onclick="cerrarSesion()" class="bg-red-600 hover:bg-red-700 px-4 py-2 rounded-lg text-sm font-bold transition">
+                    <i class="fas fa-sign-out-alt mr-1"></i> Salir
+                </button>
+            </header>
             
-            <div class="card p-4 mb-6">
-                <div class="flex justify-between items-center">
-                    <div id="monthYear" class="text-xl font-bold"></div>
+            <div class="bg-gray-800 p-4 rounded-lg mb-6 border border-gray-700 shadow-md">
+                <div class="flex flex-col sm:flex-row justify-between items-center gap-4">
+                    <div id="monthYear" class="text-xl font-bold text-blue-300"></div>
                     <div class="flex space-x-2">
-                        <select id="monthSelect" onchange="actualizarCalendario()" class="rounded bg-gray-800 p-1 text-white border border-gray-700"></select>
-                        <select id="yearSelect" onchange="actualizarCalendario()" class="rounded bg-gray-800 p-1 text-white border border-gray-700"></select>
+                        <select id="monthSelect" onchange="actualizarCalendario()" class="rounded bg-gray-700 p-2 text-white border border-gray-600 outline-none"></select>
+                        <select id="yearSelect" onchange="actualizarCalendario()" class="rounded bg-gray-700 p-2 text-white border border-gray-600 outline-none"></select>
                     </div>
                 </div>
             </div>
 
-            <div id="calendar" class="grid grid-cols-7 gap-2"></div>
+            <div id="calendar" class="grid grid-cols-7 gap-2 md:gap-4"></div>
         </div>
     </div>
 
-    <div id="turnoModal" class="modal">
-        <div class="modal-content">
-            <h3 class="text-lg font-bold mb-4 text-white">Gestionar Turno</h3>
-            <select id="turnoSelect" class="w-full p-2 mb-3 rounded bg-gray-800 text-white border border-gray-700">
-                <option value="dia">Día</option>
-                <option value="noche">Noche</option>
-                <option value="extra-dia">Extra Día</option>
-                <option value="extra-noche">Extra Noche</option>
+    <div id="turnoModal" class="modal fixed inset-0 z-50 items-center justify-center bg-black bg-opacity-75 hidden">
+        <div class="bg-gray-800 p-6 rounded-xl border border-gray-700 w-80 shadow-2xl animate-bounce-in">
+            <h3 class="text-lg font-bold mb-4 text-center">Gestionar Día</h3>
+            <select id="turnoSelect" class="w-full p-3 mb-4 rounded bg-gray-700 text-white border border-gray-600 outline-none">
+                <option value="dia">🌞 Día</option>
+                <option value="noche">🌙 Noche</option>
+                <option value="extra-dia">➕🌞 Extra Día</option>
+                <option value="extra-noche">➕🌙 Extra Noche</option>
             </select>
-            <div class="flex justify-between gap-2">
-                <button onclick="agregarTurno()" class="bg-blue-600 text-white flex-1 py-2 rounded">Agregar</button>
-                <button onclick="cerrarModal()" class="bg-gray-700 flex-1 py-2 rounded text-white">Cerrar</button>
+            <div class="flex justify-between gap-3">
+                <button onclick="agregarTurno()" class="bg-blue-600 hover:bg-blue-700 text-white flex-1 py-2 rounded-lg font-bold">Guardar</button>
+                <button onclick="cerrarModal()" class="bg-gray-600 hover:bg-gray-700 text-white flex-1 py-2 rounded-lg font-bold">Cerrar</button>
             </div>
         </div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script type="module">
-        // Configuración Global
-        window.SUPABASE_URL = 'https://kjhrxdnwuwdmktdwuhdi.supabase.co';
-        window.SUPABASE_KEY = 'sb_publishable_0nvqhjvJiytEFeif99jVsg_eiqOtXh9';
-        window.supabase = supabase.createClient(window.SUPABASE_URL, window.SUPABASE_KEY);
+        const SUPABASE_URL = 'https://kjhrxdnwuwdmktdwuhdi.supabase.co';
+        const SUPABASE_KEY = 'sb_publishable_0nvqhjvJiytEFeif99jVsg_eiqOtXh9';
+        window.supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('sw.js');
