@@ -5,7 +5,9 @@ let perfil = {
     cargo: '',
     empresa: '',
     adminTotal: 6,
-    adminUsados: 0
+    adminUsados: 0,
+    vacacionesTotal: 15,
+    vacacionesUsadas: 0
 };
 let diaSeleccionado = null;
 
@@ -42,11 +44,10 @@ window.cerrarSesion = () => window.supabase.auth.signOut();
 async function saveData() {
     const { data: { user } } = await window.supabase.auth.getUser();
     if (user) {
-        // Guardamos turnos Y perfil en la misma tabla
         await window.supabase.from('usuarios_turnos').upsert({ 
             user_id: user.id, 
             datos_turnos: turnos,
-            datos_perfil: perfil, // Nueva columna JSONB
+            datos_perfil: perfil, 
             updated_at: new Date() 
         }, { onConflict: 'user_id' });
     }
@@ -69,41 +70,50 @@ function updateUI() {
 
 // --- DASHBOARD Y PERFIL ---
 function updateDashboard() {
-    // Actualizar Textos
     document.getElementById('userNombre').innerText = perfil.nombre || 'Usuario';
     document.getElementById('userCargo').innerText = perfil.cargo || 'Cargo no def.';
     document.getElementById('userEmpresa').innerText = perfil.empresa || 'Empresa';
-    document.getElementById('userEdad').innerText = perfil.edad ? `${perfil.edad} años` : '-- años';
     
     // Iniciales Avatar
     const iniciales = (perfil.nombre || 'U').split(' ').map(n=>n[0]).join('').substring(0,2).toUpperCase();
     document.getElementById('dashboardAvatar').innerText = iniciales;
     document.getElementById('headerAvatar').innerText = iniciales;
 
-    // Calcular Administrativos Usados (Escaneando todo el año actual)
+    // Calcular Administrativos y Vacaciones Usados (Todo el año)
     const y = document.getElementById('yearSelect').value;
-    let usados = 0;
+    let usadosAdmin = 0;
+    let usadosVac = 0;
+    
     if (turnos[y]) {
         Object.values(turnos[y]).forEach(mesData => {
             Object.values(mesData).forEach(diaData => {
-                if (diaData.tipo === 'administrativo') usados++;
+                if (diaData.tipo === 'administrativo') usadosAdmin++;
+                if (diaData.tipo === 'vacaciones') usadosVac++;
             });
         });
     }
-    perfil.adminUsados = usados;
+    perfil.adminUsados = usadosAdmin;
+    perfil.vacacionesUsadas = usadosVac;
     
-    document.getElementById('adminUsados').innerText = usados;
+    // Actualizar UI Administrativos
+    document.getElementById('adminUsados').innerText = usadosAdmin;
     document.getElementById('adminTotal').innerText = perfil.adminTotal;
-    const porcentaje = Math.min(100, (usados / perfil.adminTotal) * 100);
-    document.getElementById('adminProgress').style.width = `${porcentaje}%`;
+    const porcAdmin = Math.min(100, (usadosAdmin / perfil.adminTotal) * 100);
+    document.getElementById('adminProgress').style.width = `${porcAdmin}%`;
+
+    // Actualizar UI Vacaciones
+    document.getElementById('vacacionesUsadas').innerText = usadosVac;
+    document.getElementById('vacacionesTotal').innerText = perfil.vacacionesTotal || 15;
+    const porcVac = Math.min(100, (usadosVac / (perfil.vacacionesTotal || 15)) * 100);
+    document.getElementById('vacacionesProgress').style.width = `${porcVac}%`;
 }
 
 window.abrirPerfil = () => {
     document.getElementById('editNombre').value = perfil.nombre;
-    document.getElementById('editEdad').value = perfil.edad;
     document.getElementById('editCargo').value = perfil.cargo;
     document.getElementById('editEmpresa').value = perfil.empresa;
     document.getElementById('editAdminTotal').value = perfil.adminTotal;
+    document.getElementById('editVacacionesTotal').value = perfil.vacacionesTotal || 15;
     document.getElementById('perfilModal').classList.remove('hidden');
 };
 
@@ -111,10 +121,10 @@ window.cerrarPerfil = () => document.getElementById('perfilModal').classList.add
 
 window.guardarPerfil = async () => {
     perfil.nombre = document.getElementById('editNombre').value;
-    perfil.edad = document.getElementById('editEdad').value;
     perfil.cargo = document.getElementById('editCargo').value;
     perfil.empresa = document.getElementById('editEmpresa').value;
     perfil.adminTotal = parseInt(document.getElementById('editAdminTotal').value);
+    perfil.vacacionesTotal = parseInt(document.getElementById('editVacacionesTotal').value);
     await saveData();
     window.cerrarPerfil();
 };
@@ -128,22 +138,22 @@ const CICLOS_3X3 = {
     '5': ['noche', 'dia', 'noche'],             // 5. N-D-N
     '6': ['dia', 'noche', 'noche'],             // 6. D-N-N
     '7': ['dia', 'dia', 'noche'],               // 7. D-D-N
-    '8': ['dia', 'noche', 'dia'],               // 8. D-N-D (Igual al 3, pero explícito)
+    '8': ['dia', 'noche', 'dia'],               // 8. D-N-D
     '9': ['noche', 'dia', 'dia']                // 9. N-D-D
 };
 
 window.aplicarCiclo3x3 = async () => {
     const cicloId = document.getElementById('ciclo3x3Select').value;
-    const patronTrabajo = CICLOS_3X3[cicloId]; // Array de 3
+    const patronTrabajo = CICLOS_3X3[cicloId]; 
     const fechaInput = document.getElementById('fechaInicio').value;
     
     if (!fechaInput) return alert("Selecciona una fecha de inicio");
     
+    const [iy, im, id] = fechaInput.split('-').map(Number);
+    const startDate = new Date(iy, im - 1, id); 
+    
     const y = parseInt(document.getElementById('yearSelect').value);
     const m = parseInt(document.getElementById('monthSelect').value);
-    
-    const [iy, im, id] = fechaInput.split('-').map(Number);
-    const startDate = new Date(iy, im - 1, id); // Fecha donde empieza el primer día de trabajo
     
     if(!turnos[y]) turnos[y] = {};
     if(!turnos[y][m]) turnos[y][m] = {};
@@ -161,12 +171,14 @@ window.aplicarCiclo3x3 = async () => {
         let pos = diffDays % cycleLen; 
         if(pos < 0) pos += cycleLen;
 
-        // Días 0, 1, 2 son Trabajo. Días 3, 4, 5 son Descanso.
         if (pos < 3) {
-            const tipoTurno = patronTrabajo[pos]; // Obtener el tipo específico del array (0, 1 o 2)
-            turnos[y][m][d] = { turnos: [tipoTurno], tipo: 'turno' };
+            const tipoTurno = patronTrabajo[pos];
+            // No sobrescribir vacaciones ni administrativos
+            if (turnos[y][m][d]?.tipo !== 'vacaciones' && turnos[y][m][d]?.tipo !== 'administrativo') {
+                turnos[y][m][d] = { turnos: [tipoTurno], tipo: 'turno' };
+            }
         } else {
-            // Es descanso, borramos si había turno, pero respetamos vacaciones
+            // Es descanso
             if(turnos[y][m][d] && turnos[y][m][d].tipo === 'turno') {
                 delete turnos[y][m][d];
             }
@@ -184,7 +196,6 @@ window.marcarAdministrativo = async () => {
     const y = document.getElementById('yearSelect').value;
     const m = document.getElementById('monthSelect').value;
     
-    // Guardar como tipo especial
     turnos[y][m][diaSeleccionado] = { 
         tipo: 'administrativo', 
         turnos: ['Admin'],
@@ -201,14 +212,19 @@ window.guardarVacaciones = async () => {
 
     if (!startStr || !endStr) return alert("Fechas inválidas");
 
-    const start = new Date(startStr);
-    const end = new Date(endStr);
+    // Corrección crítica: Crear fechas usando componentes locales para evitar desfase de zona horaria
+    const [sy, sm, sd] = startStr.split('-').map(Number);
+    const start = new Date(sy, sm - 1, sd);
+    
+    const [ey, em, ed] = endStr.split('-').map(Number);
+    const end = new Date(ey, em - 1, ed);
     
     // Iterar por fechas
-    for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-        const cy = d.getFullYear();
-        const cm = d.getMonth();
-        const cd = d.getDate();
+    let loopDate = new Date(start);
+    while (loopDate <= end) {
+        const cy = loopDate.getFullYear();
+        const cm = loopDate.getMonth();
+        const cd = loopDate.getDate();
 
         if(!turnos[cy]) turnos[cy] = {};
         if(!turnos[cy][cm]) turnos[cy][cm] = {};
@@ -218,9 +234,11 @@ window.guardarVacaciones = async () => {
             turnos: ['VAC'],
             estado: aprobado ? 'aprobado' : 'pendiente'
         };
+        
+        loopDate.setDate(loopDate.getDate() + 1);
     }
     await saveData();
-    alert("Vacaciones registradas.");
+    alert("Vacaciones registradas correctamente.");
 };
 
 // --- CALENDARIO RENDER ---
@@ -245,17 +263,15 @@ window.renderCalendar = () => {
         if (data?.tipo === 'vacaciones') classes += " vacaciones";
         else if (data?.tipo === 'administrativo') classes += " administrativo";
         
-        // Contenido HTML
         let content = `<span class="text-sm font-bold text-gray-500 ml-1">${d}</span>`;
         
         if (data) {
             if (data.tipo === 'vacaciones') {
-                content += `<div class="text-[10px] text-yellow-700 text-center font-bold mt-2">VACACIONES</div>`;
+                content += `<div class="text-[10px] text-yellow-700 text-center font-bold mt-2 bg-yellow-100 rounded py-1">VACACIONES</div>`;
                 if(data.estado === 'pendiente') content += `<i class="fas fa-clock absolute top-1 right-1 text-yellow-600 opacity-50 text-xs"></i>`;
             } else if (data.tipo === 'administrativo') {
-                content += `<div class="text-[10px] text-blue-700 text-center font-bold mt-2">ADMIN</div>`;
+                content += `<div class="text-[10px] text-blue-700 text-center font-bold mt-2 bg-blue-100 rounded py-1">ADMIN</div>`;
             } else if (data.turnos) {
-                // Turnos normales
                 data.turnos.forEach(t => {
                     let c = 't-dia';
                     if(t.includes('noche')) c = 't-noche';
@@ -284,12 +300,10 @@ window.agregarTurno = async (tipo) => {
     if(!turnos[y]) turnos[y] = {};
     if(!turnos[y][m]) turnos[y][m] = {};
     
-    // Sobrescribir si hay vacaciones o admin, volvemos a turno normal
     let current = [];
     if(turnos[y][m][diaSeleccionado]?.tipo === 'turno') {
         current = turnos[y][m][diaSeleccionado].turnos;
     }
-    
     if(!current.includes(tipo)) current.push(tipo);
     
     turnos[y][m][diaSeleccionado] = { turnos: current, tipo: 'turno' };
@@ -320,13 +334,6 @@ window.cambiarMes = (v) => {
     if(m<0){m=11; y--;} if(m>11){m=0; y++;}
     document.getElementById('monthSelect').value = m;
     document.getElementById('yearSelect').value = y;
-    window.renderCalendar();
-};
-
-window.goToToday = () => {
-    const d = new Date();
-    document.getElementById('monthSelect').value = d.getMonth();
-    document.getElementById('yearSelect').value = d.getFullYear();
     window.renderCalendar();
 };
 
