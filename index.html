@@ -13,15 +13,15 @@
     <div id="loginScreen" class="fixed inset-0 z-50 flex items-center justify-center bg-black p-4 hidden">
         <div class="card bg-gray-900 p-8 rounded-2xl shadow-2xl w-full max-w-sm border border-gray-800">
             <div class="text-center mb-8">
-                <i class="fas fa-calendar-alt text-5xl text-blue-500 mb-2"></i>
+                <i class="fas fa-calendar-check text-5xl text-blue-500 mb-2"></i>
                 <h2 class="text-2xl font-bold">Turnos Chile</h2>
                 <p class="text-gray-500 text-sm">Inicia sesión para sincronizar</p>
             </div>
             <div class="space-y-4">
-                <input type="email" id="loginEmail" placeholder="Correo" class="w-full p-3 rounded-xl bg-gray-800 border border-gray-700 text-white">
-                <input type="password" id="loginPass" placeholder="Contraseña" class="w-full p-3 rounded-xl bg-gray-800 border border-gray-700 text-white">
+                <input type="email" id="loginEmail" placeholder="Correo" class="w-full p-3 rounded-xl bg-gray-800 border border-gray-700 text-white outline-none">
+                <input type="password" id="loginPass" placeholder="Contraseña" class="w-full p-3 rounded-xl bg-gray-800 border border-gray-700 text-white outline-none">
                 <button onclick="login()" class="bg-blue-600 hover:bg-blue-700 text-white w-full py-3 rounded-xl font-bold transition shadow-lg active:scale-95">Entrar</button>
-                <button onclick="registro()" class="text-sm text-gray-400 w-full text-center hover:underline">¿No tienes cuenta? Regístrate</button>
+                <button onclick="registro()" class="text-sm text-gray-400 w-full text-center hover:underline">Registrarse</button>
             </div>
         </div>
     </div>
@@ -30,84 +30,86 @@
         <div class="container mx-auto px-4 py-6 max-w-6xl">
             <div class="flex flex-col md:flex-row justify-between items-center mb-6">
                 <h1 class="text-2xl md:text-3xl font-bold brand-gradient"><i class="fas fa-calendar-alt mr-2"></i>Calendario de Turnos</h1>
-                <div class="flex items-center space-x-2">
-                    <button onclick="cerrarSesion()" class="bg-red-600 px-3 py-1 rounded text-sm text-white font-bold">Salir</button>
+                <div class="flex items-center space-x-4">
+                    <button onclick="cerrarSesion()" class="bg-red-600 px-4 py-1 rounded-lg text-white font-bold text-sm">Cerrar Sesión</button>
                     <select id="userSwitcher" class="rounded-lg border border-gray-700 p-2 text-sm bg-gray-800 text-white"></select>
                 </div>
             </div>
 
-            <div class="card p-3 md:p-4 mb-6 bg-gray-900 border border-gray-800 shadow-xl">
+            <div class="card p-3 md:p-4 mb-6 bg-gray-900 border border-gray-800">
                 <div class="flex flex-col sm:flex-row justify-between items-center gap-4">
-                    <div class="text-lg md:text-xl font-bold text-blue-400 uppercase tracking-widest" id="monthYear"></div>
-                    <div id="controlsBar" class="flex flex-wrap justify-center gap-2">
+                    <div class="text-lg font-bold text-blue-400" id="monthYear"></div>
+                    <div id="controlsBar" class="flex flex-wrap gap-2">
                         <button onclick="cambiarMes(-1)" class="bg-gray-800 p-2 px-3 rounded hover:bg-gray-700"><i class="fas fa-chevron-left"></i></button>
-                        <button onclick="goToToday()" class="bg-gray-800 p-2 px-3 rounded hover:bg-gray-700">HOY</button>
+                        <button onclick="goToToday()" class="bg-gray-800 p-2 px-3 rounded hover:bg-gray-700 text-xs">HOY</button>
                         <button onclick="cambiarMes(1)" class="bg-gray-800 p-2 px-3 rounded hover:bg-gray-700"><i class="fas fa-chevron-right"></i></button>
-                        <select id="monthSelect" onchange="actualizarCalendario()" class="bg-gray-800 rounded p-2 text-sm"></select>
-                        <select id="yearSelect" onchange="actualizarCalendario()" class="bg-gray-800 rounded p-2 text-sm"></select>
+                        <select id="monthSelect" onchange="actualizarCalendario()" class="bg-gray-800 rounded p-1 text-sm"></select>
+                        <select id="yearSelect" onchange="actualizarCalendario()" class="bg-gray-800 rounded p-1 text-sm"></select>
                     </div>
                 </div>
             </div>
 
             <div class="card p-4 mb-6 bg-gray-900 border border-gray-800">
-                <div class="tabs flex border-b border-gray-700 mb-4 overflow-x-auto">
-                    <div class="tab active px-4 py-2 cursor-pointer border-b-2 border-blue-500" onclick="cambiarPestaña('calendario')">Calendario</div>
-                    <div class="tab px-4 py-2 cursor-pointer" onclick="cambiarPestaña('estadisticas')">Estadísticas</div>
-                    <div class="tab px-4 py-2 cursor-pointer" onclick="cambiarPestaña('herramientas')">Herramientas</div>
-                    <div class="tab px-4 py-2 cursor-pointer" onclick="cambiarPestaña('configuracion')">Configuración</div>
+                <div class="tabs flex border-b border-gray-700 mb-4 overflow-x-auto space-x-4">
+                    <div class="tab active px-2 py-2 cursor-pointer border-b-2 border-blue-500 font-bold" onclick="cambiarPestaña('calendario')">CALENDARIO</div>
+                    <div class="tab px-2 py-2 cursor-pointer font-bold" onclick="cambiarPestaña('estadisticas')">ESTADÍSTICAS</div>
+                    <div class="tab px-2 py-2 cursor-pointer font-bold" onclick="cambiarPestaña('configuracion')">CONFIGURACIÓN</div>
                 </div>
 
                 <div id="tab-calendario" class="tab-content active">
-                    <div id="calendar" class="grid grid-cols-7 gap-1 md:gap-2"></div>
+                    <div class="legend flex flex-wrap gap-2 mb-4">
+                        <div class="bg-yellow-500 text-black px-3 py-1 rounded-full text-xs font-bold">DÍA</div>
+                        <div class="bg-indigo-600 text-white px-3 py-1 rounded-full text-xs font-bold">NOCHE</div>
+                    </div>
+                    <div id="calendar" class="grid grid-cols-7 gap-1 md:gap-3"></div>
                 </div>
 
                 <div id="tab-estadisticas" class="tab-content hidden">
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div class="bg-gray-800 p-4 rounded-xl">
-                            <h3 class="font-bold mb-3 border-b border-gray-700 pb-2 text-blue-400">RESUMEN</h3>
-                            <div class="grid grid-cols-2 gap-3 text-center">
-                                <div class="bg-blue-900/30 p-3 rounded-lg">
-                                    <div class="text-xs text-gray-400">TRABAJADOS</div>
-                                    <div id="diasTrabajados" class="text-2xl font-bold">0</div>
-                                </div>
-                                <div class="bg-green-900/30 p-3 rounded-lg">
-                                    <div class="text-xs text-gray-400">LIBRES</div>
-                                    <div id="diasLibres" class="text-2xl font-bold">0</div>
-                                </div>
-                                <div class="bg-yellow-900/30 p-3 rounded-lg">
-                                    <div class="text-xs text-gray-400">H. NORMALES</div>
-                                    <div id="horasNormales" class="text-2xl font-bold">0</div>
-                                </div>
-                                <div class="bg-purple-900/30 p-3 rounded-lg">
-                                    <div class="text-xs text-gray-400">H. EXTRAS</div>
-                                    <div id="horasExtras" class="text-2xl font-bold">0</div>
-                                </div>
+                        <div class="bg-gray-800 p-4 rounded-xl text-center">
+                            <h3 class="text-blue-400 font-bold mb-4 uppercase">Resumen del Mes</h3>
+                            <div class="grid grid-cols-2 gap-4">
+                                <div class="bg-gray-900 p-3 rounded-lg"><div class="text-xs text-gray-500">TRABAJADOS</div><div id="diasTrabajados" class="text-2xl font-bold">0</div></div>
+                                <div class="bg-gray-900 p-3 rounded-lg"><div class="text-xs text-gray-500">LIBRES</div><div id="diasLibres" class="text-2xl font-bold">0</div></div>
+                                <div class="bg-gray-900 p-3 rounded-lg"><div class="text-xs text-gray-500">H. NORMALES</div><div id="horasNormales" class="text-2xl font-bold">0</div></div>
+                                <div class="bg-gray-900 p-3 rounded-lg"><div class="text-xs text-gray-500">H. EXTRAS</div><div id="horasExtras" class="text-2xl font-bold">0</div></div>
                             </div>
                         </div>
-                        <div class="bg-gray-800 p-4 rounded-xl">
-                            <h3 class="font-bold mb-3 border-b border-gray-700 pb-2 text-blue-400">DETALLE TEXTO</h3>
-                            <textarea id="diasNormales" rows="5" class="w-full bg-black/50 border border-gray-700 p-2 text-xs rounded" readonly></textarea>
-                        </div>
-                    </div>
-                </div>
-
-                <div id="tab-herramientas" class="tab-content hidden">
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-                        <button onclick="exportarAPDF()" class="bg-blue-600 p-3 rounded-xl font-bold"><i class="fas fa-file-pdf mr-2"></i>Exportar PDF</button>
-                        <button onclick="limpiarMes()" class="bg-red-600 p-3 rounded-xl font-bold"><i class="fas fa-trash mr-2"></i>Limpiar Mes</button>
+                        <textarea id="diasNormales" rows="8" class="w-full bg-gray-900 p-2 text-xs text-gray-300 border border-gray-700 rounded-lg" readonly></textarea>
                     </div>
                 </div>
 
                 <div id="tab-configuracion" class="tab-content hidden">
                     <div class="bg-gray-800 p-4 rounded-xl">
-                        <label class="block mb-2 font-bold">Patrón de Turnos</label>
-                        <select id="patronSelect" class="w-full bg-gray-900 border border-gray-700 p-3 rounded-xl mb-4">
-                            <option value="3x3">3x3 (3 trabajo, 3 descanso)</option>
-                            <option value="4x4">4x4 (4 trabajo, 4 descanso)</option>
-                            <option value="5x2">5x2 (5 trabajo, 2 descanso)</option>
-                            <option value="7x7">7x7 (7 trabajo, 7 descanso)</option>
-                        </select>
-                        <button onclick="completarCalendario()" class="w-full bg-blue-600 p-3 rounded-xl font-bold">Aplicar Patrón al Mes</button>
+                        <h3 class="text-blue-400 font-bold mb-4 uppercase"><i class="fas fa-magic mr-2"></i>Completar Calendario</h3>
+                        <div class="grid grid-cols-1 gap-4">
+                            <div>
+                                <label class="text-sm font-bold block mb-1">Patrón de Turnos</label>
+                                <select id="patronSelect" onchange="toggleCustomPattern()" class="w-full bg-gray-900 border border-gray-700 p-3 rounded-xl">
+                                    <option value="4x4">4x4 (4 trabajo, 4 descanso)</option>
+                                    <option value="5x2">5x2 (5 trabajo, 2 descanso)</option>
+                                    <option value="7x7">7x7 (7 trabajo, 7 descanso)</option>
+                                    <option value="6x3">6x3 (6 trabajo, 3 descanso)</option>
+                                    <option value="3x3" selected>3x3 (3 trabajo, 3 descanso)</option>
+                                    <option value="custom">Personalizado</option>
+                                </select>
+                            </div>
+                            <div id="customPatternDiv" class="hidden grid grid-cols-2 gap-2">
+                                <input type="number" id="diasTrabajo" value="3" class="bg-gray-900 p-3 rounded-xl text-center" placeholder="Días Trabajo">
+                                <input type="number" id="diasDescanso" value="3" class="bg-gray-900 p-3 rounded-xl text-center" placeholder="Días Descanso">
+                            </div>
+                            <div>
+                                <label class="text-sm font-bold block mb-1">Tipo de Rotación</label>
+                                <select id="tipoRotacion" class="w-full bg-gray-900 border border-gray-700 p-3 rounded-xl">
+                                    <option value="solo-dia">Solo Día</option>
+                                    <option value="solo-noche">Solo Noche</option>
+                                    <option value="dia-noche">Alternando Día/Noche</option>
+                                    <option value="noche-noche-dia">Ciclo Noche-Noche-Día</option>
+                                </select>
+                            </div>
+                            <button onclick="completarCalendario()" class="bg-blue-600 p-4 rounded-xl font-bold hover:bg-blue-500 transition">APLICAR AL MES ACTUAL</button>
+                            <button onclick="limpiarMes()" class="bg-red-600 p-2 rounded-xl text-xs font-bold opacity-70">LIMPIAR MES ACTUAL</button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -115,20 +117,20 @@
     </div>
 
     <div id="turnoModal" class="modal fixed inset-0 z-50 items-center justify-center bg-black bg-opacity-90 hidden p-4">
-        <div class="bg-gray-900 p-6 rounded-3xl border border-gray-800 w-full max-w-xs shadow-2xl">
-            <h3 class="text-lg font-bold mb-6 text-center">Gestionar Día</h3>
-            <select id="turnoSelect" class="w-full p-4 rounded-2xl bg-gray-800 text-white border border-gray-700 mb-4">
-                <option value="dia">🌞 Turno Día</option>
-                <option value="noche">🌙 Turno Noche</option>
+        <div class="bg-gray-900 p-6 rounded-3xl border border-gray-800 w-full max-w-xs">
+            <h3 class="text-lg font-bold mb-4 text-center">Gestionar Día</h3>
+            <select id="turnoSelect" class="w-full p-4 rounded-xl bg-gray-800 text-white border border-gray-700 mb-4">
+                <option value="dia">🌞 Día</option>
+                <option value="noche">🌙 Noche</option>
                 <option value="extra-dia">➕🌞 Extra Día</option>
                 <option value="extra-noche">➕🌙 Extra Noche</option>
             </select>
-            <textarea id="nota" placeholder="Nota opcional..." class="w-full p-3 bg-gray-800 border border-gray-700 rounded-xl mb-4 text-sm"></textarea>
+            <textarea id="nota" placeholder="Añadir nota..." class="w-full p-3 bg-gray-800 border border-gray-700 rounded-xl mb-4 text-sm"></textarea>
             <div class="flex gap-2">
-                <button onclick="agregarTurno()" class="bg-blue-600 flex-1 py-3 rounded-xl font-bold">Guardar</button>
-                <button onclick="quitarTurno()" class="bg-red-600 flex-1 py-3 rounded-xl font-bold">Quitar</button>
+                <button onclick="agregarTurno()" class="bg-blue-600 flex-1 py-3 rounded-xl font-bold">GUARDAR</button>
+                <button onclick="quitarTurno()" class="bg-red-600 flex-1 py-3 rounded-xl font-bold text-xs text-white">QUITAR</button>
             </div>
-            <button onclick="cerrarModal()" class="w-full mt-2 bg-gray-700 py-2 rounded-xl text-sm">Cerrar</button>
+            <button onclick="cerrarModal()" class="w-full mt-4 text-gray-500 text-sm">Cerrar</button>
         </div>
     </div>
 
