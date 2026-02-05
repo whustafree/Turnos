@@ -1,4 +1,4 @@
-// El navegador necesita saber de dónde vienen estas funciones al ser tipo módulo
+// Importaciones de Firebase desde CDN
 import { 
     signInWithEmailAndPassword, 
     createUserWithEmailAndPassword, 
@@ -11,6 +11,7 @@ let turnos = {};
 let diaSeleccionado = null;
 
 // --- GESTIÓN DE SESIÓN ---
+// onAuthStateChanged mantiene la sesión activa aunque cierres el navegador
 onAuthStateChanged(window.auth, async (user) => {
     const loginScreen = document.getElementById('loginScreen');
     const appContent = document.getElementById('appContent');
@@ -18,35 +19,43 @@ onAuthStateChanged(window.auth, async (user) => {
     if (user) {
         loginScreen.classList.add('hidden');
         appContent.classList.remove('hidden');
-        await cargarDatosNube();
+        await cargarDatosNube(); // Carga automática al entrar
     } else {
         loginScreen.classList.remove('hidden');
         appContent.classList.add('hidden');
     }
 });
 
+// Asignamos las funciones a window para que los botones del HTML puedan verlas
 window.login = () => {
     const email = document.getElementById('loginEmail').value;
     const pass = document.getElementById('loginPass').value;
-    signInWithEmailAndPassword(window.auth, email, pass).catch(err => alert("Error: " + err.message));
+    signInWithEmailAndPassword(window.auth, email, pass)
+        .catch(err => alert("Error al ingresar: " + err.message));
 };
 
 window.registro = () => {
     const email = document.getElementById('loginEmail').value;
     const pass = document.getElementById('loginPass').value;
-    createUserWithEmailAndPassword(window.auth, email, pass).then(() => alert("¡Cuenta creada!")).catch(err => alert(err.message));
+    createUserWithEmailAndPassword(window.auth, email, pass)
+        .then(() => alert("¡Cuenta creada con éxito!"))
+        .catch(err => alert("Error al registrar: " + err.message));
 };
 
 window.cerrarSesion = () => signOut(window.auth);
 
-// --- SINCRONIZACIÓN NUBE ---
+// --- SINCRONIZACIÓN CON FIRESTORE ---
 async function guardarDatosNube() {
     const user = window.auth.currentUser;
     if (user) {
-        await setDoc(doc(window.db, "usuarios", user.uid), {
-            datosTurnos: turnos,
-            actualizado: new Date()
-        });
+        try {
+            await setDoc(doc(window.db, "usuarios", user.uid), {
+                datosTurnos: turnos,
+                actualizado: new Date()
+            });
+        } catch (e) {
+            console.error("Error al sincronizar:", e);
+        }
     }
 }
 
@@ -61,11 +70,12 @@ async function cargarDatosNube() {
     }
 }
 
-// --- LÓGICA CALENDARIO ---
-function actualizarCalendario() {
+// --- LÓGICA DEL CALENDARIO ---
+window.actualizarCalendario = () => {
     const año = document.getElementById('yearSelect').value;
     const mes = document.getElementById('monthSelect').value;
     const grid = document.getElementById('calendar');
+    if (!grid) return;
     grid.innerHTML = '';
 
     const diasMes = new Date(año, parseInt(mes) + 1, 0).getDate();
@@ -75,22 +85,25 @@ function actualizarCalendario() {
 
     for(let d=1; d<=diasMes; d++) {
         const div = document.createElement('div');
-        div.className = 'day card p-2 text-center cursor-pointer';
-        div.innerHTML = `<span>${d}</span>`;
+        div.className = 'day card p-2 text-center cursor-pointer border border-gray-700 rounded hover:bg-gray-800';
+        div.innerHTML = `<span class="font-bold">${d}</span>`;
         
         const data = turnos[año]?.[mes]?.[d];
         if(data && data.turnos) {
             data.turnos.forEach(t => {
                 const badge = document.createElement('div');
-                badge.className = `turno ${t} text-[10px] rounded mt-1 text-white p-1`;
-                badge.textContent = t.toUpperCase();
+                badge.className = `turno ${t} text-[9px] rounded mt-1 text-white p-1 uppercase`;
+                badge.textContent = t.replace('-', ' ');
                 div.appendChild(badge);
             });
         }
-        div.onclick = () => { diaSeleccionado = d; document.getElementById('turnoModal').classList.add('active'); };
+        div.onclick = () => { 
+            diaSeleccionado = d; 
+            document.getElementById('turnoModal').classList.add('active'); 
+        };
         grid.appendChild(div);
     }
-}
+};
 
 window.agregarTurno = async () => {
     const año = document.getElementById('yearSelect').value;
@@ -103,23 +116,31 @@ window.agregarTurno = async () => {
 
     if(!turnos[año][mes][diaSeleccionado].turnos.includes(tipo)) {
         turnos[año][mes][diaSeleccionado].turnos.push(tipo);
-        actualizarCalendario();
+        window.actualizarCalendario();
         await guardarDatosNube();
     }
+    window.cerrarModal();
+};
+
+window.cerrarModal = () => {
     document.getElementById('turnoModal').classList.remove('active');
 };
 
-// Inicialización de selectores
+// Inicialización de selectores al cargar la página
 document.addEventListener('DOMContentLoaded', () => {
     const ySel = document.getElementById('yearSelect');
     const mSel = document.getElementById('monthSelect');
     const actual = new Date();
     
-    for(let i=2024; i<=2030; i++) {
-        const opt = document.createElement('option');
-        opt.value = i; opt.textContent = i;
-        ySel.appendChild(opt);
+    if (ySel) {
+        for(let i=2024; i<=2030; i++) {
+            const opt = document.createElement('option');
+            opt.value = i; opt.textContent = i;
+            ySel.appendChild(opt);
+        }
+        ySel.value = actual.getFullYear();
     }
-    ySel.value = actual.getFullYear();
-    mSel.value = actual.getMonth();
+    if (mSel) mSel.value = actual.getMonth();
+    
+    window.actualizarCalendario();
 });
