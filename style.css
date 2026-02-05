@@ -1,0 +1,105 @@
+:root {
+    --primary: #1976d2;
+    --primary-light: #42a5f5;
+    --primary-dark: #0d47a1;
+    --secondary: #ff6d00;
+    --background: #f0f2f5;
+    --card: #ffffff;
+    --text: #212121;
+    --text-light: #757575;
+    --border: rgba(0, 0, 0, 0.1);
+    --border-radius: 12px;
+    --shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    --turno-dia: #ffd600;
+    --turno-noche: #3949ab;
+    --turno-extra-dia: #ff9100;
+    --turno-extra-noche: #7b1fa2;
+}
+
+.dark-mode {
+    --background: #000000;
+    --card: #0a0a0a;
+    --text: #e0e0e0;
+    --text-light: #b0b0b0;
+    --border: #3a3a3a;
+    --shadow: 0 4px 10px rgba(0,0,0,0.65);
+    --primary: #FFB74D;
+    --turno-noche: #B85C38;
+}
+
+body {
+    background-color: var(--background);
+    color: var(--text);
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    padding-bottom: 70px;
+}
+
+.card {
+    background-color: var(--card);
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow);
+    border: 1px solid var(--border);
+}
+
+.day {
+    min-height: 80px;
+    border: 1px solid var(--border);
+    border-radius: var(--border-radius);
+    padding: 5px;
+    position: relative;
+    background-color: var(--card);
+}
+
+.day.today { outline: 2px solid var(--primary); }
+
+.day-header {
+    background-color: var(--primary);
+    color: white;
+    font-weight: bold;
+    text-align: center;
+    padding: 5px;
+    border-radius: 6px;
+}
+
+.turno {
+    margin-top: 4px;
+    padding: 2px 6px;
+    border-radius: 12px;
+    font-size: 0.7rem;
+    text-align: center;
+    color: white;
+}
+
+.dia { background-color: var(--turno-dia); color: black; }
+.noche { background-color: var(--turno-noche); }
+
+.btn-primary { background-color: var(--primary); color: black; font-weight: bold; }
+.btn-secondary { background-color: var(--secondary); color: black; }
+
+.tabs { display: flex; overflow-x: auto; border-bottom: 1px solid var(--border); }
+.tab { padding: 10px 15px; cursor: pointer; color: var(--text-light); }
+.tab.active { color: var(--primary); border-bottom: 2px solid var(--primary); }
+
+.tab-content { display: none; }
+.tab-content.active { display: block; }
+
+.modal {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.7);
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+}
+
+.modal.active { display: flex; }
+.modal-content { background: var(--card); padding: 20px; border-radius: 12px; width: 90%; max-width: 400px; }
+
+@media (max-width: 640px) {
+    .day { min-height: 45px; }
+    .turno { display: none; }
+    .mobile-turno-indicator { display: block; width: 8px; height: 8px; border-radius: 50%; margin: 2px auto; }
+    .mobile-nav-item { display: flex; flex-direction: column; align-items: center; font-size: 0.7rem; color: var(--text); }
+    .mobile-nav-item.active { color: var(--primary); }
+}
