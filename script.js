@@ -7,14 +7,13 @@ let perfil = {
     adminTotal: 6,
     adminUsados: 0,
     vacacionesTotal: 15,
-    vacacionesUsadas: 0
+    vacacionesUsadas: 0,
+    patronActual: null 
 };
 let diaSeleccionado = null;
 let feriadosCache = {};
 
 // --- 1. CONFIGURACIÓN Y TEMA ---
-
-// SOLUCIÓN AL ERROR: Asignamos explícitamente a window
 window.toggleTheme = () => {
     const body = document.body;
     const isDark = body.getAttribute('data-theme') === 'dark';
@@ -37,14 +36,14 @@ function actualizarIconoTema() {
     }
 }
 
-// --- 2. LÓGICA DE FERIADOS (CHILE) ---
+// --- 2. FERIADOS (CHILE) ---
 const FERIADOS = {
     'Año Nuevo': y => new Date(y, 0, 1),
     'Viernes Santo': y => calcularSemanaSanta(y, -2),
     'Sábado Santo': y => calcularSemanaSanta(y, -1),
     'Día del Trabajo': y => new Date(y, 4, 1),
     'Glorias Navales': y => new Date(y, 4, 21),
-    'San Pedro y Pablo': y => { let d = new Date(y, 5, 29); return d.getDay()===1 ? d : new Date(y, 5, 29); }, 
+    'San Pedro y Pablo': y => { let d = new Date(y, 5, 29); return d.getDay()===1 ? d : new Date(y, 5, 29); },
     'Virgen del Carmen': y => new Date(y, 6, 16),
     'Asunción': y => new Date(y, 7, 15),
     'Fiestas Patrias': y => new Date(y, 8, 18),
@@ -70,8 +69,7 @@ function esFeriado(fecha) {
 
 function esDiaHabil(fecha) {
     const diaSemana = fecha.getDay();
-    // 0 = Domingo, 6 = Sábado
-    if (diaSemana === 0 || diaSemana === 6) return false;
+    if (diaSemana === 0 || diaSemana === 6) return false; 
     if (esFeriado(fecha)) return false;
     return true;
 }
@@ -131,7 +129,7 @@ async function loadData(uid) {
 function updateUI() {
     window.renderCalendar();
     updateDashboard();
-    window.renderListaAusencias(); // Aseguramos que se actualice la lista
+    window.renderListaAusencias();
 }
 
 // --- 4. DASHBOARD ---
@@ -144,7 +142,6 @@ function updateDashboard() {
     document.getElementById('dashboardAvatar').innerText = iniciales;
     document.getElementById('headerAvatar').innerText = iniciales;
 
-    // Calcular saldos anuales
     const y = parseInt(document.getElementById('yearSelect').value);
     let usadosAdmin = 0;
     let usadosVac = 0;
@@ -173,26 +170,37 @@ function updateDashboard() {
     document.getElementById('vacacionesProgress').style.width = `${pVac}%`;
 }
 
-// --- 5. GESTIÓN AUSENCIAS (AGRUPADAS Y ELIMINACIÓN) ---
+// --- 5. GESTIÓN AUSENCIAS Y RESTAURACIÓN ---
 
-// Función para agrupar días consecutivos
+// Función para calcular qué turno tocaba en una fecha según el patrón guardado
+function calcularTurnoOriginal(fecha) {
+    if (!perfil.patronActual) return null; // No hay patrón guardado
+
+    const { fechaInicio, cicloId } = perfil.patronActual;
+    const patronTrabajo = CICLOS_3X3[cicloId];
+    
+    const [iy, im, id] = fechaInicio.split('-').map(Number);
+    const startDate = new Date(iy, im - 1, id);
+    
+    if (fecha < startDate) return null; // Fecha anterior al inicio del patrón
+
+    const diffDays = Math.floor((fecha - startDate) / (1000 * 60 * 60 * 24));
+    let pos = diffDays % 6; if(pos < 0) pos += 6;
+
+    if (pos < 3) {
+        return patronTrabajo[pos]; // Retorna 'dia' o 'noche'
+    } else {
+        return null; // Es descanso
+    }
+}
+
 function agruparFechas(items) {
     if (items.length === 0) return [];
-    
-    // Ordenar cronológicamente
     items.sort((a, b) => a.fecha - b.fecha);
-    
     const grupos = [];
     let grupoActual = [items[0]];
-    
     for (let i = 1; i < items.length; i++) {
-        const fechaPrev = grupoActual[grupoActual.length - 1].fecha;
-        const fechaCurr = items[i].fecha;
-        
-        // Diferencia en días
-        const diff = (fechaCurr - fechaPrev) / (1000 * 60 * 60 * 24);
-        
-        // Si son consecutivos y del mismo tipo, agrupar
+        const diff = (items[i].fecha - grupoActual[grupoActual.length - 1].fecha) / (1000 * 60 * 60 * 24);
         if (Math.round(diff) === 1 && items[i].tipo === items[i-1].tipo) {
             grupoActual.push(items[i]);
         } else {
@@ -217,11 +225,7 @@ window.renderListaAusencias = () => {
             Object.keys(turnos[y][m]).forEach(d => {
                 const data = turnos[y][m][d];
                 if (data.tipo === 'vacaciones' || data.tipo === 'administrativo') {
-                    items.push({
-                        fecha: new Date(y, m, d),
-                        tipo: data.tipo,
-                        estado: data.estado
-                    });
+                    items.push({ fecha: new Date(y, m, d), tipo: data.tipo });
                 }
             });
         });
@@ -232,7 +236,6 @@ window.renderListaAusencias = () => {
         return;
     }
 
-    // Agrupar rangos
     const grupos = agruparFechas(items);
 
     grupos.forEach(grupo => {
@@ -240,55 +243,39 @@ window.renderListaAusencias = () => {
         const fin = grupo[grupo.length - 1].fecha;
         const tipo = grupo[0].tipo;
         
-        // Formatear fechas para mostrar y para usar como ID al borrar
-        // IMPORTANTE: Usamos toISOString para pasar fechas exactas a la función de borrado
         const inicioISO = inicio.getFullYear() + '-' + (inicio.getMonth() + 1) + '-' + inicio.getDate();
         const finISO = fin.getFullYear() + '-' + (fin.getMonth() + 1) + '-' + fin.getDate();
 
-        const textoRango = (inicio.getTime() === fin.getTime()) 
-            ? inicio.toLocaleDateString('es-CL') 
-            : `Del ${inicio.toLocaleDateString('es-CL')} al ${fin.toLocaleDateString('es-CL')}`;
+        const textoRango = (inicio.getTime() === fin.getTime()) ? inicio.toLocaleDateString('es-CL') : `Del ${inicio.toLocaleDateString('es-CL')} al ${fin.toLocaleDateString('es-CL')}`;
         
         const diasHabiles = grupo.filter(g => esDiaHabil(g.fecha)).length;
         const subtitulo = tipo === 'vacaciones' ? `${diasHabiles} días hábiles` : 'Día Administrativo';
-        
         const colorClass = tipo === 'vacaciones' ? 'text-yellow-600 bg-yellow-100 dark:bg-yellow-900/30' : 'text-blue-600 bg-blue-100 dark:bg-blue-900/30';
         const iconClass = tipo === 'vacaciones' ? 'fa-umbrella-beach' : 'fa-file-contract';
 
-        // Creamos el elemento HTML
         const div = document.createElement('div');
         div.className = "flex justify-between items-center p-3 mb-2 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-xl shadow-sm";
         div.innerHTML = `
             <div class="flex items-center gap-3">
-                <div class="p-2 rounded-lg ${colorClass}">
-                    <i class="fas ${iconClass}"></i>
-                </div>
+                <div class="p-2 rounded-lg ${colorClass}"><i class="fas ${iconClass}"></i></div>
                 <div>
                     <div class="font-bold text-sm text-gray-700 dark:text-gray-200">${tipo === 'vacaciones' ? 'Vacaciones' : 'Administrativo'}</div>
                     <div class="text-xs text-gray-500 dark:text-gray-400">${textoRango}</div>
                     <div class="text-[10px] text-gray-400">${subtitulo}</div>
                 </div>
             </div>
-            <button class="text-red-400 hover:text-red-600 p-2 transition">
-                <i class="fas fa-trash"></i>
-            </button>
+            <button class="text-red-400 hover:text-red-600 p-2 transition"><i class="fas fa-trash"></i></button>
         `;
-        
-        // Asignamos el evento click directamente al botón para evitar problemas de comillas
         div.querySelector('button').onclick = () => window.eliminarPeriodo(inicioISO, finISO);
-        
         container.appendChild(div);
     });
 };
 
 window.eliminarPeriodo = async (inicioStr, finStr) => {
-    if(!confirm("¿Eliminar este periodo completo?")) return;
+    if(!confirm("¿Eliminar este periodo y restaurar turnos originales?")) return;
 
-    // Parsear fechas manuales (YYYY-M-D)
     const [yi, mi, di] = inicioStr.split('-').map(Number);
     const [yf, mf, df] = finStr.split('-').map(Number);
-    
-    // Crear fechas locales
     const start = new Date(yi, mi - 1, di);
     const end = new Date(yf, mf - 1, df);
     
@@ -298,13 +285,58 @@ window.eliminarPeriodo = async (inicioStr, finStr) => {
         const cm = loop.getMonth();
         const cd = loop.getDate();
         
-        if (turnos[cy]?.[cm]?.[cd]) {
-            delete turnos[cy][cm][cd];
+        // Calcular qué turno debería haber aquí
+        const turnoOriginal = calcularTurnoOriginal(loop);
+
+        if (turnoOriginal) {
+            // Si le toca turno, lo restauramos
+            if(!turnos[cy]) turnos[cy] = {};
+            if(!turnos[cy][cm]) turnos[cy][cm] = {};
+            turnos[cy][cm][cd] = { turnos: [turnoOriginal], tipo: 'turno' };
+        } else {
+            // Si le toca descanso, borramos la entrada
+            if (turnos[cy]?.[cm]?.[cd]) delete turnos[cy][cm][cd];
         }
         loop.setDate(loop.getDate() + 1);
     }
     
     await saveData();
+};
+
+window.generarCartaVacaciones = () => {
+    const startStr = document.getElementById('vacStart').value;
+    const endStr = document.getElementById('vacEnd').value;
+    
+    if(!startStr || !endStr) return alert("Selecciona las fechas primero");
+
+    const [sy, sm, sd] = startStr.split('-').map(Number);
+    const [ey, em, ed] = endStr.split('-').map(Number);
+    const start = new Date(sy, sm-1, sd);
+    const end = new Date(ey, em-1, ed);
+
+    // Contar días hábiles
+    let habiles = 0;
+    let loop = new Date(start);
+    while(loop <= end) {
+        if(esDiaHabil(loop)) habiles++;
+        loop.setDate(loop.getDate() + 1);
+    }
+
+    const texto = `Estimada Jefatura,
+
+Junto con saludar, solicito hacer uso de mi feriado legal desde el ${start.toLocaleDateString('es-CL')} hasta el ${end.toLocaleDateString('es-CL')}, ambas fechas inclusive.
+
+Este periodo corresponde a ${habiles} días hábiles.
+
+Quedo atento/a a su aprobación.
+
+Atte,
+${perfil.nombre || 'Nombre Colaborador'}
+${perfil.cargo || ''}`;
+
+    navigator.clipboard.writeText(texto).then(() => {
+        alert("¡Carta copiada al portapapeles! Lista para pegar en correo o WhatsApp.");
+    });
 };
 
 window.guardarVacaciones = async () => {
@@ -313,7 +345,6 @@ window.guardarVacaciones = async () => {
     const aprobado = document.getElementById('vacAprobado').checked;
 
     if (!startStr || !endStr) return alert("Selecciona fechas");
-    
     const [sy, sm, sd] = startStr.split('-').map(Number);
     const start = new Date(sy, sm - 1, sd);
     const [ey, em, ed] = endStr.split('-').map(Number);
@@ -339,6 +370,7 @@ window.guardarVacaciones = async () => {
         loop.setDate(loop.getDate() + 1);
     }
     await saveData();
+    alert("Vacaciones registradas.");
 };
 
 window.marcarAdministrativo = async () => {
@@ -410,7 +442,7 @@ window.renderCalendar = () => {
     }
 };
 
-// --- OTROS HELPERS GLOBALES ---
+// --- HELPERS ---
 window.agregarTurno = async (tipo) => {
     const y = document.getElementById('yearSelect').value;
     const m = document.getElementById('monthSelect').value;
@@ -493,6 +525,9 @@ window.aplicarCiclo3x3 = async () => {
     const fechaInput = document.getElementById('fechaInicio').value;
     if (!fechaInput) return alert("Selecciona fecha inicio");
     
+    // GUARDAR EL PATRÓN EN EL PERFIL PARA FUTURAS RESTAURACIONES
+    perfil.patronActual = { fechaInicio: fechaInput, cicloId: cicloId };
+    
     const [iy, im, id] = fechaInput.split('-').map(Number);
     const startDate = new Date(iy, im - 1, id); 
     const y = parseInt(document.getElementById('yearSelect').value);
@@ -517,12 +552,10 @@ window.aplicarCiclo3x3 = async () => {
         }
     }
     await saveData();
-    alert("Ciclo aplicado.");
+    alert("Ciclo aplicado y configuración guardada.");
 };
 
-// Inicialización
 document.addEventListener('DOMContentLoaded', () => {
-    // Tema inicial
     const savedTheme = localStorage.getItem('theme');
     if (savedTheme === 'dark') document.body.setAttribute('data-theme', 'dark');
     actualizarIconoTema();
@@ -534,6 +567,5 @@ document.addEventListener('DOMContentLoaded', () => {
     const now = new Date();
     ys.value = now.getFullYear();
     ms.value = now.getMonth();
-    
     checkSession();
 });
