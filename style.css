@@ -1,20 +1,90 @@
 :root {
-    --primary: #2563eb;
-    --secondary: #f59e0b;
+    --bg-body: #0f172a;
+    --bg-card: #1e293b;
+    --text-main: #f1f5f9;
+    --text-muted: #94a3b8;
+    --primary: #3b82f6;
+    --primary-hover: #2563eb;
+    --accent: #f59e0b;
+    
+    /* Colores de Turnos (Vibrantes pero legibles) */
+    --turno-dia-bg: #fbbf24;
+    --turno-dia-text: #451a03;
+    --turno-noche-bg: #4f46e5;
+    --turno-noche-text: #e0e7ff;
+    --turno-extra-dia-bg: #f97316;
+    --turno-extra-dia-text: #431407;
+    --turno-extra-noche-bg: #7c3aed;
+    --turno-extra-noche-text: #f3e8ff;
 }
 
-body { font-family: 'Inter', sans-serif; background-color: #000; }
-
-.day { transition: transform 0.1s; }
-.day:active { transform: scale(0.95); }
-
-.brand-gradient {
-    background: linear-gradient(to right, #60a5fa, #fbbf24);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
+body {
+    background-color: var(--bg-body);
+    color: var(--text-main);
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    -webkit-tap-highlight-color: transparent;
 }
 
-/* Scrollbar invisible */
-::-webkit-scrollbar { display: none; }
+.card {
+    background-color: var(--bg-card);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+    backdrop-filter: blur(10px);
+}
 
-.tab.active { color: #60a5fa; font-weight: bold; }
+/* Calendario */
+.day {
+    min-height: 85px;
+    background-color: #1e293b;
+    border: 1px solid #334155;
+    transition: transform 0.1s, border-color 0.2s;
+}
+
+.day:active { transform: scale(0.98); }
+.day.today { border: 2px solid var(--primary); background-color: rgba(59, 130, 246, 0.1); }
+.day.locked { background-image: repeating-linear-gradient(45deg, transparent, transparent 5px, rgba(0,0,0,0.2) 5px, rgba(0,0,0,0.2) 10px); }
+
+/* Badges de Turnos */
+.turno-badge {
+    font-size: 0.7rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    padding: 3px 6px;
+    border-radius: 6px;
+    margin-top: 3px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    letter-spacing: 0.5px;
+}
+
+.t-dia { background-color: var(--turno-dia-bg); color: var(--turno-dia-text); }
+.t-noche { background-color: var(--turno-noche-bg); color: var(--turno-noche-text); }
+.t-extra-dia { background-color: var(--turno-extra-dia-bg); color: var(--turno-extra-dia-text); border: 1px solid rgba(255,255,255,0.2); }
+.t-extra-noche { background-color: var(--turno-extra-noche-bg); color: var(--turno-extra-noche-text); border: 1px solid rgba(255,255,255,0.2); }
+
+/* Inputs y Selects */
+input, select, textarea {
+    background-color: #0f172a !important;
+    border: 1px solid #334155 !important;
+    color: white !important;
+}
+input:focus, select:focus, textarea:focus {
+    border-color: var(--primary) !important;
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.3);
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: #0f172a; }
+::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: #475569; }
+
+/* Tabs */
+.tab-btn.active {
+    color: var(--primary);
+    border-bottom: 2px solid var(--primary);
+}
+
+/* Modal */
+.modal-enter { animation: modalIn 0.2s ease-out forwards; }
+@keyframes modalIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
