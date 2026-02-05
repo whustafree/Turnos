@@ -1,4 +1,4 @@
-const CACHE_NAME = 'turnos-vFirebase';
+const CACHE_NAME = 'turnos-vSupabase';
 const assets = ['./', './index.html', './style.css', './script.js'];
 
 self.addEventListener('install', event => {

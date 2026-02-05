@@ -13,17 +13,17 @@
     <div id="loginScreen" class="fixed inset-0 z-50 flex items-center justify-center bg-black p-4 hidden">
         <div class="card p-6 w-full max-w-sm">
             <h2 class="text-2xl font-bold mb-4 text-center text-blue-500">Bienvenido</h2>
-            <input type="email" id="loginEmail" placeholder="Correo electrónico" class="w-full p-2 mb-3 rounded bg-gray-800 border border-gray-700 text-white">
-            <input type="password" id="loginPass" placeholder="Contraseña" class="w-full p-2 mb-4 rounded bg-gray-800 border border-gray-700 text-white">
+            <input type="email" id="loginEmail" placeholder="Correo" class="w-full p-2 mb-3 rounded bg-gray-800 text-white border border-gray-700">
+            <input type="password" id="loginPass" placeholder="Contraseña" class="w-full p-2 mb-4 rounded bg-gray-800 text-white border border-gray-700">
             <button onclick="login()" class="bg-blue-600 text-white w-full py-2 rounded mb-2 font-bold">Entrar</button>
-            <button onclick="registro()" class="text-sm text-gray-400 w-full text-center">¿No tienes cuenta? Regístrate aquí</button>
+            <button onclick="registro()" class="text-sm text-gray-400 w-full text-center hover:text-white transition">¿No tienes cuenta? Regístrate</button>
         </div>
     </div>
 
     <div id="appContent" class="hidden">
         <div class="container mx-auto px-4 py-6 max-w-6xl">
             <div class="flex justify-between items-center mb-6">
-                <h1 class="text-2xl font-bold brand-gradient">Turnos Chile</h1>
+                <h1 class="text-2xl font-bold brand-gradient text-blue-400">Turnos Chile</h1>
                 <button onclick="cerrarSesion()" class="text-sm bg-red-600 px-3 py-1 rounded text-white font-bold">Cerrar Sesión</button>
             </div>
             
@@ -59,9 +59,10 @@
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script type="module">
-        const SUPABASE_URL = 'https://kjhrxdnwuwdmktdwuhdi.supabase.co';
-        const SUPABASE_KEY = 'sb_publishable_0nvqhjvJiytEFeif99jVsg_eiqOtXh9';
-        window.supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        // Configuración Global
+        window.SUPABASE_URL = 'https://kjhrxdnwuwdmktdwuhdi.supabase.co';
+        window.SUPABASE_KEY = 'sb_publishable_0nvqhjvJiytEFeif99jVsg_eiqOtXh9';
+        window.supabase = supabase.createClient(window.SUPABASE_URL, window.SUPABASE_KEY);
 
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('sw.js');

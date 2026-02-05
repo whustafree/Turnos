@@ -17,7 +17,6 @@ async function revisarSesion() {
     }
 }
 
-// Escuchar cambios de estado
 window.supabase.auth.onAuthStateChange((event, session) => {
     revisarSesion();
 });
@@ -26,50 +25,39 @@ window.login = async () => {
     const email = document.getElementById('loginEmail').value.trim();
     const password = document.getElementById('loginPass').value.trim();
 
-    if (!email || !password) {
-        alert("Por favor, ingrese correo y contraseña");
-        return;
-    }
+    if (!email || !password) return alert("Ingresa correo y contraseña");
 
     const { error } = await window.supabase.auth.signInWithPassword({ email, password });
-    if (error) alert("Error al entrar: " + error.message);
+    if (error) alert("Error: " + error.message);
 };
 
 window.registro = async () => {
     const email = document.getElementById('loginEmail').value.trim();
     const password = document.getElementById('loginPass').value.trim();
 
-    if (!email || !password) {
-        alert("Complete ambos campos para registrarse");
-        return;
-    }
+    if (!email || !password) return alert("Completa los campos");
 
     const { error } = await window.supabase.auth.signUp({ email, password });
-    if (error) alert("Error al registrar: " + error.message);
-    else alert("¡Usuario creado! Ya puedes iniciar sesión.");
+    if (error) alert("Error: " + error.message);
+    else alert("¡Usuario creado! Si desactivaste la confirmación de email, ya puedes entrar.");
 };
 
-window.cerrarSesion = async () => {
-    await window.supabase.auth.signOut();
-};
+window.cerrarSesion = () => window.supabase.auth.signOut();
 
-// --- SINCRONIZACIÓN DE DATOS ---
+// --- BASE DE DATOS ---
 async function guardarDatosSupabase() {
     const { data: { user } } = await window.supabase.auth.getUser();
     if (user) {
-        const { error } = await window.supabase.from('usuarios_turnos')
-            .upsert({ 
-                user_id: user.id, 
-                datos_turnos: turnos,
-                updated_at: new Date() 
-            }, { onConflict: 'user_id' });
-        
-        if (error) console.error("Error al sincronizar:", error);
+        await window.supabase.from('usuarios_turnos').upsert({ 
+            user_id: user.id, 
+            datos_turnos: turnos,
+            updated_at: new Date() 
+        }, { onConflict: 'user_id' });
     }
 }
 
 async function cargarDatosSupabase(userId) {
-    const { data, error } = await window.supabase
+    const { data } = await window.supabase
         .from('usuarios_turnos')
         .select('datos_turnos')
         .eq('user_id', userId)
@@ -81,7 +69,7 @@ async function cargarDatosSupabase(userId) {
     }
 }
 
-// --- LÓGICA DEL CALENDARIO ---
+// --- CALENDARIO ---
 window.actualizarCalendario = () => {
     const año = document.getElementById('yearSelect').value;
     const mes = document.getElementById('monthSelect').value;
@@ -97,7 +85,7 @@ window.actualizarCalendario = () => {
     for(let d=1; d<=diasMes; d++) {
         const div = document.createElement('div');
         div.className = 'day card p-2 text-center cursor-pointer border border-gray-700 rounded hover:bg-gray-800';
-        div.innerHTML = `<span class="font-bold text-sm">${d}</span>`;
+        div.innerHTML = `<span class="font-bold text-sm text-white">${d}</span>`;
         
         const data = turnos[año]?.[mes]?.[d];
         if(data && data.turnos) {
@@ -133,11 +121,8 @@ window.agregarTurno = async () => {
     window.cerrarModal();
 };
 
-window.cerrarModal = () => {
-    document.getElementById('turnoModal').classList.remove('active');
-};
+window.cerrarModal = () => document.getElementById('turnoModal').classList.remove('active');
 
-// Inicialización de selectores
 document.addEventListener('DOMContentLoaded', () => {
     const ySel = document.getElementById('yearSelect');
     const mSel = document.getElementById('monthSelect');
@@ -152,6 +137,5 @@ document.addEventListener('DOMContentLoaded', () => {
         ySel.value = actual.getFullYear();
     }
     if (mSel) mSel.value = actual.getMonth();
-    
     revisarSesion();
 });
