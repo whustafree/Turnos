@@ -102,12 +102,12 @@
                                 <option value="1">1. Solo Día (D-D-D)</option>
                                 <option value="2">2. Solo Noche (N-N-N)</option>
                                 <option value="3">3. Alternando (D-N-D)</option>
-                                <option value="4">4. Noche-Noche-Día</option>
-                                <option value="5">5. Noche-Día-Noche</option>
-                                <option value="6">6. Día-Noche-Noche</option>
-                                <option value="7">7. Día-Día-Noche</option>
-                                <option value="8">8. Día-Noche-Día</option>
-                                <option value="9">9. Noche-Día-Día</option>
+                                <option value="4">4. Noche-Noche-Día (N-N-D)</option>
+                                <option value="5">5. Noche-Día-Noche (N-D-N)</option>
+                                <option value="6">6. Día-Noche-Noche (D-N-N)</option>
+                                <option value="7">7. Día-Día-Noche (D-D-N)</option>
+                                <option value="8">8. Día-Noche-Día (D-N-D)</option>
+                                <option value="9">9. Noche-Día-Día (N-D-D)</option>
                             </select>
                         </div>
                         <div>
@@ -228,7 +228,19 @@
         </div>
     </div>
 
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js')
+                    .then(reg => console.log('SW registrado', reg))
+                    .catch(err => console.log('SW falló', err));
+            });
+        }
+    </script>
+
     <script type="module">
         window.SUPABASE_URL = 'https://kjhrxdnwuwdmktdwuhdi.supabase.co';
         window.SUPABASE_KEY = 'sb_publishable_0nvqhjvJiytEFeif99jVsg_eiqOtXh9';
