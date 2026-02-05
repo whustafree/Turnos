@@ -139,3 +139,39 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 supabaseClient.auth.onAuthStateChange(() => revisarSesion());
+// Añade esto para que los botones del HTML funcionen
+window.login = async () => {
+    const email = document.getElementById('loginEmail').value;
+    const password = document.getElementById('loginPass').value;
+    const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
+    if (error) alert(error.message);
+};
+
+window.registro = async () => {
+    const email = document.getElementById('loginEmail').value;
+    const password = document.getElementById('loginPass').value;
+    const { error } = await supabaseClient.auth.signUp({ email, password });
+    if (error) alert(error.message);
+    else alert("¡Confirma tu correo!");
+};
+
+window.cerrarSesion = () => supabaseClient.auth.signOut();
+
+window.agregarTurno = async () => {
+    const año = document.getElementById('yearSelect').value;
+    const mes = document.getElementById('monthSelect').value;
+    const tipo = document.getElementById('turnoSelect').value;
+
+    if(!turnos[año]) turnos[año] = {};
+    if(!turnos[año][mes]) turnos[año][mes] = {};
+    if(!turnos[año][mes][diaSeleccionado]) turnos[año][mes][diaSeleccionado] = { turnos: [] };
+
+    if(!turnos[año][mes][diaSeleccionado].turnos.includes(tipo)) {
+        turnos[año][mes][diaSeleccionado].turnos.push(tipo);
+        actualizarCalendario();
+        await guardarDatos();
+    }
+    document.getElementById('turnoModal').classList.remove('active');
+};
+
+window.actualizarCalendario = actualizarCalendario; // Si lo llamas desde onchange en el HTML
