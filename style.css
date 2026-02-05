@@ -1,90 +1,110 @@
+/* 1. Fuentes y Animaciones */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;700;900&display=swap');
+
 :root {
-    --bg-body: #0f172a;
-    --bg-card: #1e293b;
-    --text-main: #f1f5f9;
-    --text-muted: #94a3b8;
-    --primary: #3b82f6;
-    --primary-hover: #2563eb;
-    --accent: #f59e0b;
+    /* Paleta de colores "Pro" (Dark Slate) */
+    --bg-body: #0f172a;   /* Fondo muy oscuro (Slate 900) */
+    --bg-card: #1e293b;   /* Tarjetas (Slate 800) */
+    --text-main: #f1f5f9; /* Texto principal (Slate 100) */
+    --text-muted: #94a3b8; /* Texto secundario (Slate 400) */
     
-    /* Colores de Turnos (Vibrantes pero legibles) */
-    --turno-dia-bg: #fbbf24;
-    --turno-dia-text: #451a03;
-    --turno-noche-bg: #4f46e5;
-    --turno-noche-text: #e0e7ff;
-    --turno-extra-dia-bg: #f97316;
-    --turno-extra-dia-text: #431407;
-    --turno-extra-noche-bg: #7c3aed;
-    --turno-extra-noche-text: #f3e8ff;
+    --primary: #3b82f6;       /* Azul primario */
+    --primary-hover: #2563eb; /* Azul hover */
+    
+    /* Colores de Turnos (Vibrantes para resaltar en fondo oscuro) */
+    --turno-dia-bg: #fbbf24;       /* Amber 400 */
+    --turno-dia-text: #451a03;     /* Amber 950 */
+    
+    --turno-noche-bg: #4f46e5;     /* Indigo 600 */
+    --turno-noche-text: #e0e7ff;   /* Indigo 100 */
+    
+    --turno-extra-dia-bg: #f97316; /* Orange 500 */
+    --turno-extra-dia-text: #431407; /* Orange 950 */
+    
+    --turno-extra-noche-bg: #7c3aed; /* Violet 600 */
+    --turno-extra-noche-text: #f3e8ff; /* Violet 100 */
 }
 
+/* 2. Estilos Generales */
 body {
     background-color: var(--bg-body);
     color: var(--text-main);
     font-family: 'Inter', system-ui, -apple-system, sans-serif;
     -webkit-tap-highlight-color: transparent;
+    overflow-x: hidden; /* Evita scroll horizontal */
 }
 
+/* 3. Componentes UI */
 .card {
     background-color: var(--bg-card);
     border: 1px solid rgba(255, 255, 255, 0.05);
     box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
-    backdrop-filter: blur(10px);
+    backdrop-filter: blur(10px); /* Efecto vidrio sutil */
 }
 
-/* Calendario */
-.day {
-    min-height: 85px;
-    background-color: #1e293b;
-    border: 1px solid #334155;
-    transition: transform 0.1s, border-color 0.2s;
+/* Tabs / Pestañas */
+.tab-btn {
+    color: var(--text-muted);
+    transition: all 0.2s ease;
 }
-
-.day:active { transform: scale(0.98); }
-.day.today { border: 2px solid var(--primary); background-color: rgba(59, 130, 246, 0.1); }
-.day.locked { background-image: repeating-linear-gradient(45deg, transparent, transparent 5px, rgba(0,0,0,0.2) 5px, rgba(0,0,0,0.2) 10px); }
-
-/* Badges de Turnos */
-.turno-badge {
-    font-size: 0.7rem;
-    font-weight: 800;
-    text-transform: uppercase;
-    padding: 3px 6px;
-    border-radius: 6px;
-    margin-top: 3px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-    letter-spacing: 0.5px;
+.tab-btn:hover {
+    color: var(--text-main);
 }
-
-.t-dia { background-color: var(--turno-dia-bg); color: var(--turno-dia-text); }
-.t-noche { background-color: var(--turno-noche-bg); color: var(--turno-noche-text); }
-.t-extra-dia { background-color: var(--turno-extra-dia-bg); color: var(--turno-extra-dia-text); border: 1px solid rgba(255,255,255,0.2); }
-.t-extra-noche { background-color: var(--turno-extra-noche-bg); color: var(--turno-extra-noche-text); border: 1px solid rgba(255,255,255,0.2); }
-
-/* Inputs y Selects */
-input, select, textarea {
-    background-color: #0f172a !important;
-    border: 1px solid #334155 !important;
-    color: white !important;
-}
-input:focus, select:focus, textarea:focus {
-    border-color: var(--primary) !important;
-    outline: none;
-    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.3);
-}
-
-/* Scrollbar */
-::-webkit-scrollbar { width: 8px; height: 8px; }
-::-webkit-scrollbar-track { background: #0f172a; }
-::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
-::-webkit-scrollbar-thumb:hover { background: #475569; }
-
-/* Tabs */
 .tab-btn.active {
     color: var(--primary);
     border-bottom: 2px solid var(--primary);
 }
 
-/* Modal */
-.modal-enter { animation: modalIn 0.2s ease-out forwards; }
-@keyframes modalIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+/* 4. Calendario y Días */
+.day {
+    min-height: 85px; /* Altura cómoda para ver turnos */
+    background-color: #1e293b;
+    border: 1px solid #334155;
+    transition: transform 0.1s, border-color 0.2s, background-color 0.2s;
+}
+
+.day:active { transform: scale(0.98); } /* Efecto de click */
+
+.day.today { 
+    border: 2px solid var(--primary); 
+    background-color: rgba(59, 130, 246, 0.1); 
+    position: relative;
+    z-index: 10;
+}
+
+/* Patrón rayado para días bloqueados/pasados si se usa */
+.day.locked { 
+    background-image: repeating-linear-gradient(45deg, transparent, transparent 5px, rgba(0,0,0,0.2) 5px, rgba(0,0,0,0.2) 10px); 
+}
+
+/* 5. Badges (Etiquetas) de Turnos */
+.turno-badge {
+    font-size: 0.65rem; /* Texto pequeño y nítido */
+    font-weight: 800;
+    text-transform: uppercase;
+    padding: 3px 2px;
+    border-radius: 4px;
+    margin-top: 3px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    letter-spacing: 0.5px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Asignación de colores a las clases generadas por JS */
+.t-dia { background-color: var(--turno-dia-bg); color: var(--turno-dia-text); }
+.t-noche { background-color: var(--turno-noche-bg); color: var(--turno-noche-text); }
+.t-extra-dia { background-color: var(--turno-extra-dia-bg); color: var(--turno-extra-dia-text); border: 1px solid rgba(255,255,255,0.2); }
+.t-extra-noche { background-color: var(--turno-extra-noche-bg); color: var(--turno-extra-noche-text); border: 1px solid rgba(255,255,255,0.2); }
+
+/* 6. Formularios (Inputs oscuros) */
+input, select, textarea {
+    background-color: #0f172a !important; /* Fondo oscuro */
+    border: 1px solid #334155 !important; /* Borde sutil */
+    color: white !important;
+    border-radius: 0.75rem; /* rounded-xl */
+}
+
+input:focus, select:focus, textarea:focus {
+    border-
