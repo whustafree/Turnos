@@ -24,15 +24,15 @@
         <div class="container mx-auto px-4 py-6 max-w-6xl">
             <div class="flex justify-between items-center mb-6">
                 <h1 class="text-2xl font-bold brand-gradient">Turnos Chile</h1>
-                <button onclick="cerrarSesion()" class="text-sm bg-red-600 px-3 py-1 rounded text-white">Cerrar Sesión</button>
+                <button onclick="cerrarSesion()" class="text-sm bg-red-600 px-3 py-1 rounded text-white font-bold">Cerrar Sesión</button>
             </div>
             
             <div class="card p-4 mb-6">
                 <div class="flex justify-between items-center">
                     <div id="monthYear" class="text-xl font-bold"></div>
                     <div class="flex space-x-2">
-                        <select id="monthSelect" onchange="actualizarCalendario()" class="rounded bg-gray-800 p-1"></select>
-                        <select id="yearSelect" onchange="actualizarCalendario()" class="rounded bg-gray-800 p-1"></select>
+                        <select id="monthSelect" onchange="actualizarCalendario()" class="rounded bg-gray-800 p-1 text-white border border-gray-700"></select>
+                        <select id="yearSelect" onchange="actualizarCalendario()" class="rounded bg-gray-800 p-1 text-white border border-gray-700"></select>
                     </div>
                 </div>
             </div>
@@ -44,36 +44,27 @@
     <div id="turnoModal" class="modal">
         <div class="modal-content">
             <h3 class="text-lg font-bold mb-4">Gestionar Turno</h3>
-            <select id="turnoSelect" class="w-full p-2 mb-3 rounded bg-gray-800 text-white">
+            <select id="turnoSelect" class="w-full p-2 mb-3 rounded bg-gray-800 text-white border border-gray-700">
                 <option value="dia">Día</option>
                 <option value="noche">Noche</option>
                 <option value="extra-dia">Extra Día</option>
                 <option value="extra-noche">Extra Noche</option>
             </select>
-            <div class="flex justify-between">
-                <button onclick="agregarTurno()" class="btn-primary px-4 py-2 rounded">Agregar</button>
-                <button onclick="cerrarModal()" class="bg-gray-700 px-4 py-2 rounded text-white">Cerrar</button>
+            <div class="flex justify-between gap-2">
+                <button onclick="agregarTurno()" class="btn-primary flex-1 py-2 rounded">Agregar</button>
+                <button onclick="cerrarModal()" class="bg-gray-700 flex-1 py-2 rounded text-white">Cerrar</button>
             </div>
         </div>
     </div>
 
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-        import { getAuth } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-        import { getFirestore } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
-
-        const firebaseConfig = {
-            apiKey: "AIzaSyBXT6NLK2ZbdEjFyVsHT_MUPC20txz2sfM",
-            authDomain: "turnos-chile.firebaseapp.com",
-            projectId: "turnos-chile",
-            storageBucket: "turnos-chile.firebasestorage.app",
-            messagingSenderId: "545791087800",
-            appId: "1:545791087800:web:14f26c7e5f83abcd3e904d"
-        };
-
-        const app = initializeApp(firebaseConfig);
-        window.auth = getAuth(app);
-        window.db = getFirestore(app);
+        // Configuración de tu proyecto Supabase
+        const SUPABASE_URL = 'https://kjhrxdnwuwdmktdwuhdi.supabase.co';
+        const SUPABASE_KEY = 'sb_publishable_0nvqhjvJiytEFeif99jVsg_eiqOtXh9';
+        
+        // Inicialización global
+        window.supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('sw.js');
