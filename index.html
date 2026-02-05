@@ -4,245 +4,215 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <link rel="manifest" href="manifest.json">
-    <title>Gestión de Turnos Pro</title>
+    <title>Gestión de Turnos</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="style.css">
-    <script>
-        tailwind.config = {
-            darkMode: 'class',
-            theme: {
-                extend: {
-                    colors: {
-                        dark: { 900: '#0f172a', 800: '#1e293b', 700: '#334155' },
-                        turno: { dia: '#fbbf24', noche: '#4f46e5', extra: '#f97316' }
-                    }
-                }
-            }
-        }
-    </script>
 </head>
-<body class="bg-dark-900 text-slate-200 font-sans antialiased selection:bg-blue-500 selection:text-white">
+<body class="bg-[#f3f4f6] text-gray-800 pb-20">
 
-    <div id="loginScreen" class="fixed inset-0 z-50 flex items-center justify-center bg-black/95 backdrop-blur-sm p-4 hidden">
-        <div class="bg-dark-800 p-8 rounded-3xl shadow-2xl w-full max-w-sm border border-dark-700 relative overflow-hidden">
-            <div class="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-blue-500 to-purple-600"></div>
-            <div class="text-center mb-8">
-                <div class="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-blue-500/10 text-blue-400 mb-4 ring-1 ring-blue-500/20">
-                    <i class="fas fa-layer-group text-3xl"></i>
-                </div>
-                <h2 class="text-2xl font-bold text-white tracking-tight">Turnos Chile</h2>
-                <p class="text-slate-400 text-sm mt-2">Sincronización en la nube activa</p>
+    <div id="loginScreen" class="fixed inset-0 z-50 flex items-center justify-center bg-white p-6 hidden">
+        <div class="w-full max-w-sm text-center">
+            <div class="mb-8">
+                <i class="fas fa-cube text-6xl text-blue-600 mb-4"></i>
+                <h1 class="text-3xl font-bold text-gray-900">Portal del Colaborador</h1>
+                <p class="text-gray-500 mt-2">Gestiona tus turnos y beneficios</p>
             </div>
-            <div class="space-y-4">
-                <input type="email" id="loginEmail" placeholder="correo@ejemplo.com" class="w-full p-4 rounded-xl bg-dark-900 border border-dark-700 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition text-white placeholder-slate-500">
-                <input type="password" id="loginPass" placeholder="••••••••" class="w-full p-4 rounded-xl bg-dark-900 border border-dark-700 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition text-white placeholder-slate-500">
-                <button onclick="login()" class="w-full py-4 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white rounded-xl font-bold shadow-lg shadow-blue-500/25 transition-all transform active:scale-[0.98]">
-                    Iniciar Sesión
-                </button>
-                <button onclick="registro()" class="w-full py-2 text-sm text-slate-400 hover:text-white transition">
-                    ¿No tienes cuenta? <span class="text-blue-400">Regístrate</span>
-                </button>
-            </div>
+            <input type="email" id="loginEmail" placeholder="Correo corporativo" class="w-full p-4 mb-3 border border-gray-300 rounded-xl bg-gray-50 text-lg">
+            <input type="password" id="loginPass" placeholder="Contraseña" class="w-full p-4 mb-6 border border-gray-300 rounded-xl bg-gray-50 text-lg">
+            <button onclick="login()" class="w-full py-4 bg-blue-600 text-white rounded-xl font-bold text-lg shadow-lg hover:bg-blue-700 transition">INICIAR SESIÓN</button>
+            <button onclick="registro()" class="mt-4 text-blue-600 font-semibold text-sm">Crear cuenta nueva</button>
         </div>
     </div>
 
-    <div id="appContent" class="hidden min-h-screen flex flex-col pb-24 md:pb-0">
+    <div id="appContent" class="hidden">
         
-        <header class="bg-dark-800 border-b border-dark-700 sticky top-0 z-40 backdrop-blur-md bg-opacity-90">
-            <div class="container mx-auto px-4 h-16 flex items-center justify-between">
-                <div class="flex items-center gap-3">
-                    <i class="fas fa-calendar-alt text-blue-500 text-xl"></i>
-                    <h1 class="font-bold text-lg tracking-tight text-white">Mi Calendario</h1>
+        <header class="fixed-header fixed top-0 w-full z-40 px-4 py-3 flex justify-between items-center bg-white">
+            <div class="flex items-center gap-3">
+                <div class="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-white">
+                    <i class="fas fa-layer-group"></i>
                 </div>
-                <button onclick="cerrarSesion()" class="text-slate-400 hover:text-red-400 transition p-2 rounded-lg hover:bg-dark-700">
-                    <i class="fas fa-power-off text-lg"></i>
-                </button>
+                <span class="font-bold text-lg tracking-tight">TurnosApp</span>
+            </div>
+            <div class="flex items-center gap-3">
+                <div id="headerAvatar" class="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center text-xs font-bold text-gray-600 cursor-pointer" onclick="abrirPerfil()">US</div>
             </div>
         </header>
 
-        <main class="container mx-auto px-4 py-6 flex-grow max-w-5xl">
-            
-            <div class="bg-dark-800 rounded-2xl p-1 mb-6 border border-dark-700 shadow-lg flex justify-between items-center relative overflow-hidden">
-                <button onclick="cambiarMes(-1)" class="w-12 h-12 flex items-center justify-center text-slate-400 hover:text-white hover:bg-dark-700 rounded-xl transition"><i class="fas fa-chevron-left"></i></button>
-                <div class="flex flex-col items-center cursor-pointer" onclick="goToToday()">
-                    <span id="monthYear" class="text-lg font-bold text-white uppercase tracking-wider"></span>
-                    <span class="text-[10px] text-blue-400 font-bold tracking-widest">HOY</span>
+        <div class="mt-20 container mx-auto px-4 max-w-5xl space-y-6">
+
+            <div class="card p-6 flex flex-col md:flex-row items-center md:items-start gap-6 relative overflow-hidden">
+                <div class="absolute top-0 right-0 w-32 h-32 bg-blue-50 rounded-bl-full -z-0"></div>
+                
+                <div class="relative z-10" onclick="abrirPerfil()">
+                    <div id="dashboardAvatar" class="avatar-circle w-20 h-20 text-2xl shadow-lg cursor-pointer">US</div>
+                    <div class="absolute bottom-0 right-0 bg-white rounded-full p-1 border border-gray-200 shadow-sm cursor-pointer">
+                        <i class="fas fa-pen text-xs text-gray-500"></i>
+                    </div>
                 </div>
-                <button onclick="cambiarMes(1)" class="w-12 h-12 flex items-center justify-center text-slate-400 hover:text-white hover:bg-dark-700 rounded-xl transition"><i class="fas fa-chevron-right"></i></button>
+                
+                <div class="text-center md:text-left flex-1 relative z-10">
+                    <h2 id="userNombre" class="text-2xl font-bold text-gray-900">Usuario</h2>
+                    <p class="text-gray-500 text-sm mb-1"><span id="userCargo">Cargo no definido</span> en <span id="userEmpresa">Empresa</span></p>
+                    <div class="flex items-center justify-center md:justify-start gap-2 mt-2">
+                        <span class="px-2 py-1 bg-green-100 text-green-700 text-xs font-bold rounded-md border border-green-200">Activo</span>
+                        <span id="userEdad" class="px-2 py-1 bg-gray-100 text-gray-600 text-xs font-bold rounded-md border border-gray-200">-- años</span>
+                    </div>
+                </div>
+
+                <div class="w-full md:w-auto bg-blue-50 p-4 rounded-xl border border-blue-100 min-w-[200px]">
+                    <div class="flex justify-between items-center mb-2">
+                        <span class="text-xs font-bold text-blue-800 uppercase">Días Administrativos</span>
+                        <i class="fas fa-file-contract text-blue-400"></i>
+                    </div>
+                    <div class="text-3xl font-bold text-blue-700 mb-1">
+                        <span id="adminUsados">0</span><span class="text-lg text-blue-400 font-normal">/<span id="adminTotal">6</span></span>
+                    </div>
+                    <div class="w-full bg-blue-200 h-2 rounded-full overflow-hidden">
+                        <div id="adminProgress" class="bg-blue-600 h-full" style="width: 0%"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card p-2 flex justify-between items-center bg-white shadow-sm">
+                <button onclick="cambiarMes(-1)" class="w-10 h-10 flex items-center justify-center text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition"><i class="fas fa-chevron-left"></i></button>
+                <div class="text-center">
+                    <h3 id="monthYear" class="text-lg font-bold text-gray-800 uppercase"></h3>
+                    <div class="text-xs text-gray-400 font-medium">Vista Mensual</div>
+                </div>
+                <button onclick="cambiarMes(1)" class="w-10 h-10 flex items-center justify-center text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition"><i class="fas fa-chevron-right"></i></button>
                 
                 <select id="monthSelect" class="hidden" onchange="actualizarCalendario()"></select>
                 <select id="yearSelect" class="hidden" onchange="actualizarCalendario()"></select>
             </div>
 
-            <div class="flex space-x-1 bg-dark-800 p-1 rounded-xl mb-6 border border-dark-700 overflow-x-auto">
-                <button onclick="cambiarPestaña('calendario')" class="tab-btn active flex-1 py-2 px-4 rounded-lg text-sm font-bold transition-all text-center whitespace-nowrap"><i class="fas fa-calendar mr-2"></i>Turnos</button>
-                <button onclick="cambiarPestaña('configuracion')" class="tab-btn flex-1 py-2 px-4 rounded-lg text-sm font-bold transition-all text-center text-slate-400 hover:text-white whitespace-nowrap"><i class="fas fa-sliders mr-2"></i>Patrones</button>
-                <button onclick="cambiarPestaña('estadisticas')" class="tab-btn flex-1 py-2 px-4 rounded-lg text-sm font-bold transition-all text-center text-slate-400 hover:text-white whitespace-nowrap"><i class="fas fa-chart-pie mr-2"></i>Stats</button>
+            <div class="grid grid-cols-3 gap-2">
+                <button onclick="cambiarPestaña('calendario')" class="tab-btn active py-3 bg-white border border-gray-200 rounded-xl font-bold text-sm shadow-sm text-blue-600 ring-2 ring-blue-100">Calendario</button>
+                <button onclick="cambiarPestaña('configuracion')" class="tab-btn py-3 bg-white border border-gray-200 rounded-xl font-bold text-sm shadow-sm text-gray-500">Planificar</button>
+                <button onclick="cambiarPestaña('ausencias')" class="tab-btn py-3 bg-white border border-gray-200 rounded-xl font-bold text-sm shadow-sm text-gray-500">Ausencias</button>
             </div>
 
-            <div id="tab-calendario" class="tab-content block animate-fade-in">
-                <div class="grid grid-cols-7 mb-2 text-center">
-                    <div class="text-xs font-bold text-slate-500 py-2">LU</div>
-                    <div class="text-xs font-bold text-slate-500 py-2">MA</div>
-                    <div class="text-xs font-bold text-slate-500 py-2">MI</div>
-                    <div class="text-xs font-bold text-slate-500 py-2">JU</div>
-                    <div class="text-xs font-bold text-slate-500 py-2">VI</div>
-                    <div class="text-xs font-bold text-blue-400 py-2">SA</div>
-                    <div class="text-xs font-bold text-red-400 py-2">DO</div>
+            <div id="tab-calendario" class="tab-content block animate-slide-up">
+                <div class="grid grid-cols-7 mb-2 text-center text-xs font-bold text-gray-400">
+                    <div>LU</div><div>MA</div><div>MI</div><div>JU</div><div>VI</div><div class="text-blue-500">SA</div><div class="text-red-500">DO</div>
                 </div>
                 <div id="calendar" class="grid grid-cols-7 gap-1 md:gap-2"></div>
             </div>
 
-            <div id="tab-configuracion" class="tab-content hidden animate-fade-in">
-                <div class="bg-dark-800 rounded-2xl p-6 border border-dark-700 shadow-xl">
-                    <div class="flex items-center gap-3 mb-6 border-b border-dark-700 pb-4">
-                        <div class="p-2 bg-purple-500/20 rounded-lg text-purple-400"><i class="fas fa-magic"></i></div>
-                        <h3 class="text-lg font-bold text-white">Generador de Turnos</h3>
-                    </div>
-
-                    <div class="space-y-6">
+            <div id="tab-configuracion" class="tab-content hidden animate-slide-up">
+                <div class="card p-6">
+                    <h3 class="font-bold text-lg mb-4 text-gray-800">Generador de Turnos 3x3</h3>
+                    <p class="text-sm text-gray-500 mb-4">Selecciona tu secuencia de 3 días de trabajo. El sistema alternará automáticamente 3 trabajo - 3 descanso.</p>
+                    
+                    <div class="space-y-4">
                         <div>
-                            <label class="block text-xs font-bold text-slate-400 uppercase mb-2">Patrón de Trabajo</label>
-                            <div class="relative">
-                                <select id="patronSelect" onchange="toggleCustomPattern()" class="w-full p-4 rounded-xl bg-dark-900 border border-dark-700 text-white appearance-none focus:border-blue-500 outline-none">
-                                    <option value="4x4">4x4 (4 Trabajo / 4 Libre)</option>
-                                    <option value="5x2">5x2 (5 Trabajo / 2 Libre)</option>
-                                    <option value="6x1">6x1 (6 Trabajo / 1 Libre)</option>
-                                    <option value="7x7">7x7 (7 Trabajo / 7 Libre)</option>
-                                    <option value="6x3">6x3 (6 Trabajo / 3 Libre)</option>
-                                    <option value="3x3" selected>3x3 (3 Trabajo / 3 Libre)</option>
-                                    <option value="custom">Personalizado...</option>
-                                </select>
-                                <i class="fas fa-chevron-down absolute right-4 top-1/2 -translate-y-1/2 text-slate-500"></i>
-                            </div>
-                        </div>
-
-                        <div id="customPatternDiv" class="hidden grid grid-cols-2 gap-4 p-4 bg-dark-900 rounded-xl border border-dark-700">
-                            <div>
-                                <label class="text-[10px] uppercase font-bold text-slate-500">Días Trabajo</label>
-                                <input type="number" id="diasTrabajo" value="3" class="w-full mt-1 bg-dark-800 border border-dark-700 rounded-lg p-2 text-center text-white focus:border-blue-500 outline-none">
-                            </div>
-                            <div>
-                                <label class="text-[10px] uppercase font-bold text-slate-500">Días Libre</label>
-                                <input type="number" id="diasDescanso" value="3" class="w-full mt-1 bg-dark-800 border border-dark-700 rounded-lg p-2 text-center text-white focus:border-blue-500 outline-none">
-                            </div>
+                            <label class="block text-xs font-bold text-gray-500 uppercase mb-2">Selecciona el Ciclo (3 días trabajo)</label>
+                            <select id="ciclo3x3Select" class="w-full p-4 bg-gray-50 border-gray-200 rounded-xl text-gray-700 font-medium">
+                                <option value="1">1. Solo Día (D-D-D)</option>
+                                <option value="2">2. Solo Noche (N-N-N)</option>
+                                <option value="3">3. Alternando (D-N-D)</option>
+                                <option value="4">4. Ciclo Noche-Noche-Día (N-N-D)</option>
+                                <option value="5">5. Ciclo Noche-Día-Noche (N-D-N)</option>
+                                <option value="6">6. Ciclo Día-Noche-Noche (D-N-N)</option>
+                                <option value="7">7. Ciclo Día-Día-Noche (D-D-N)</option>
+                                <option value="8">8. Ciclo Día-Noche-Día (D-N-D)</option>
+                                <option value="9">9. Ciclo Noche-Día-Día (N-D-D)</option>
+                            </select>
                         </div>
 
                         <div>
-                            <label class="block text-xs font-bold text-slate-400 uppercase mb-2">Tipo de Rotación</label>
-                            <div class="relative">
-                                <select id="tipoRotacion" class="w-full p-4 rounded-xl bg-dark-900 border border-dark-700 text-white appearance-none focus:border-blue-500 outline-none">
-                                    <option value="dia-noche">Alternado (Día / Noche)</option>
-                                    <option value="solo-dia">Solo Día (Fijo)</option>
-                                    <option value="solo-noche">Solo Noche (Fijo)</option>
-                                    <option value="noche-noche-dia">Ciclo: Noche-Noche-Día</option>
-                                    <option value="dia-dia-noche">Ciclo: Día-Día-Noche</option>
-                                </select>
-                                <i class="fas fa-sync absolute right-4 top-1/2 -translate-y-1/2 text-slate-500"></i>
-                            </div>
+                            <label class="block text-xs font-bold text-gray-500 uppercase mb-2">Comienzo del Ciclo</label>
+                            <input type="date" id="fechaInicio" class="w-full p-4 bg-gray-50 border-gray-200 rounded-xl">
                         </div>
 
-                        <div>
-                            <label class="block text-xs font-bold text-slate-400 uppercase mb-2">Inicio del Ciclo</label>
-                            <input type="date" id="fechaInicio" class="w-full p-4 rounded-xl bg-dark-900 border border-dark-700 text-white focus:border-blue-500 outline-none">
-                            <p class="text-xs text-slate-500 mt-2 flex items-center gap-2"><i class="fas fa-info-circle"></i> Si no seleccionas fecha, empieza el 1 del mes.</p>
-                        </div>
-
-                        <div class="pt-4 space-y-3">
-                            <button onclick="completarCalendario()" class="w-full py-4 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-bold shadow-lg shadow-blue-900/20 transition active:scale-[0.98]">
-                                <i class="fas fa-rocket mr-2"></i>GENERAR TURNOS
-                            </button>
-                            
-                            <div class="grid grid-cols-2 gap-3">
-                                <button onclick="autollenarAnual()" class="py-3 bg-dark-700 hover:bg-dark-600 text-white rounded-xl font-bold text-sm border border-dark-600 transition">
-                                    <i class="fas fa-calendar mr-2"></i>Todo el Año
-                                </button>
-                                <button onclick="limpiarMes()" class="py-3 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-xl font-bold text-sm border border-red-500/20 transition">
-                                    <i class="fas fa-trash mr-2"></i>Borrar Mes
-                                </button>
-                            </div>
-                        </div>
+                        <button onclick="aplicarCiclo3x3()" class="w-full py-4 bg-blue-600 text-white font-bold rounded-xl shadow-lg hover:bg-blue-700 transition">
+                            APLICAR CICLO
+                        </button>
                     </div>
                 </div>
             </div>
 
-            <div id="tab-estadisticas" class="tab-content hidden animate-fade-in">
-                <div class="grid grid-cols-2 gap-4 mb-6">
-                    <div class="bg-dark-800 p-4 rounded-2xl border border-dark-700 relative overflow-hidden">
-                        <div class="absolute right-0 top-0 p-3 opacity-10 text-4xl text-blue-500"><i class="fas fa-briefcase"></i></div>
-                        <p class="text-xs text-slate-400 font-bold uppercase">Trabajados</p>
-                        <p id="diasTrabajados" class="text-3xl font-bold text-white mt-1">0</p>
+            <div id="tab-ausencias" class="tab-content hidden animate-slide-up">
+                <div class="card p-6 mb-4 border-l-4 border-yellow-400">
+                    <h3 class="font-bold text-lg mb-2 text-gray-800">Modo Vacaciones</h3>
+                    <div class="grid grid-cols-2 gap-4 mb-4">
+                        <div>
+                            <label class="text-xs font-bold text-gray-400">Desde</label>
+                            <input type="date" id="vacStart" class="w-full p-2 mt-1">
+                        </div>
+                        <div>
+                            <label class="text-xs font-bold text-gray-400">Hasta</label>
+                            <input type="date" id="vacEnd" class="w-full p-2 mt-1">
+                        </div>
                     </div>
-                    <div class="bg-dark-800 p-4 rounded-2xl border border-dark-700 relative overflow-hidden">
-                        <div class="absolute right-0 top-0 p-3 opacity-10 text-4xl text-green-500"><i class="fas fa-umbrella-beach"></i></div>
-                        <p class="text-xs text-slate-400 font-bold uppercase">Libres</p>
-                        <p id="diasLibres" class="text-3xl font-bold text-white mt-1">0</p>
+                    <div class="flex items-center gap-2 mb-4">
+                        <input type="checkbox" id="vacAprobado" class="w-5 h-5 text-blue-600 rounded">
+                        <label for="vacAprobado" class="text-sm font-medium">Marcar como Aprobado</label>
                     </div>
-                    <div class="bg-dark-800 p-4 rounded-2xl border border-dark-700 relative overflow-hidden">
-                        <div class="absolute right-0 top-0 p-3 opacity-10 text-4xl text-yellow-500"><i class="fas fa-clock"></i></div>
-                        <p class="text-xs text-slate-400 font-bold uppercase">H. Normales</p>
-                        <p id="horasNormales" class="text-3xl font-bold text-white mt-1">0</p>
-                    </div>
-                    <div class="bg-dark-800 p-4 rounded-2xl border border-dark-700 relative overflow-hidden">
-                        <div class="absolute right-0 top-0 p-3 opacity-10 text-4xl text-purple-500"><i class="fas fa-plus-circle"></i></div>
-                        <p class="text-xs text-slate-400 font-bold uppercase">H. Extras</p>
-                        <p id="horasExtras" class="text-3xl font-bold text-white mt-1">0</p>
-                    </div>
-                </div>
-                
-                <div class="bg-dark-800 rounded-2xl p-6 border border-dark-700">
-                    <h3 class="font-bold text-white mb-4">Detalle Mensual</h3>
-                    <textarea id="diasNormales" class="w-full h-48 bg-dark-900 border border-dark-700 rounded-xl p-4 text-xs font-mono text-slate-300 outline-none" readonly></textarea>
-                    <button onclick="exportarAPDF()" class="w-full mt-4 py-3 bg-dark-700 hover:bg-dark-600 text-white rounded-xl font-bold transition flex items-center justify-center gap-2">
-                        <i class="fas fa-file-pdf text-red-400"></i> Descargar PDF Mensual
+                    <button onclick="guardarVacaciones()" class="w-full py-3 bg-yellow-500 text-white font-bold rounded-xl hover:bg-yellow-600 shadow-md">
+                        REGISTRAR VACACIONES
                     </button>
                 </div>
             </div>
 
-        </main>
+        </div>
     </div>
 
-    <div id="turnoModal" class="modal fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm hidden p-4 animate-fade-in">
-        <div class="bg-dark-800 rounded-3xl w-full max-w-xs shadow-2xl border border-dark-700 overflow-hidden transform transition-all scale-100">
-            <div class="p-6 bg-dark-900 border-b border-dark-700 flex justify-between items-center">
-                <h3 class="font-bold text-white text-lg">Editar Día <span id="modalDiaNum" class="text-blue-400"></span></h3>
-                <button onclick="cerrarModal()" class="w-8 h-8 rounded-full bg-dark-800 flex items-center justify-center text-slate-400 hover:text-white hover:bg-dark-700"><i class="fas fa-times"></i></button>
+    <div id="perfilModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 hidden backdrop-blur-sm p-4">
+        <div class="bg-white p-6 rounded-2xl w-full max-w-sm shadow-2xl animate-slide-up">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="text-xl font-bold text-gray-800">Editar Perfil</h3>
+                <button onclick="cerrarPerfil()" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times text-xl"></i></button>
             </div>
-            
-            <div class="p-6 space-y-4">
-                <div class="grid grid-cols-2 gap-3">
-                    <button onclick="agregarTurno('dia')" class="p-4 rounded-2xl bg-amber-500/10 text-amber-400 border border-amber-500/20 hover:bg-amber-500/20 transition flex flex-col items-center gap-2 group">
-                        <i class="fas fa-sun text-2xl group-hover:scale-110 transition"></i>
-                        <span class="font-bold text-xs">DÍA</span>
-                    </button>
-                    <button onclick="agregarTurno('noche')" class="p-4 rounded-2xl bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 hover:bg-indigo-500/20 transition flex flex-col items-center gap-2 group">
-                        <i class="fas fa-moon text-2xl group-hover:scale-110 transition"></i>
-                        <span class="font-bold text-xs">NOCHE</span>
-                    </button>
-                    <button onclick="agregarTurno('extra-dia')" class="p-3 rounded-xl bg-orange-500/10 text-orange-400 border border-orange-500/20 hover:bg-orange-500/20 font-bold text-[10px]">
-                        EXTRA DÍA
-                    </button>
-                    <button onclick="agregarTurno('extra-noche')" class="p-3 rounded-xl bg-purple-500/10 text-purple-400 border border-purple-500/20 hover:bg-purple-500/20 font-bold text-[10px]">
-                        EXTRA NOCHE
-                    </button>
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Nombre Completo</label>
+                    <input type="text" id="editNombre" class="w-full p-3 bg-gray-50 border-gray-200 rounded-lg">
                 </div>
-
-                <div class="relative">
-                    <textarea id="nota" rows="2" placeholder="Nota..." class="w-full p-3 pl-10 rounded-xl bg-dark-900 border border-dark-700 text-sm text-white focus:border-blue-500 outline-none resize-none"></textarea>
-                    <i class="fas fa-sticky-note absolute left-3 top-3 text-dark-700"></i>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Edad</label>
+                        <input type="number" id="editEdad" class="w-full p-3 bg-gray-50 border-gray-200 rounded-lg">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Días Admin (Total)</label>
+                        <select id="editAdminTotal" class="w-full p-3 bg-gray-50 border-gray-200 rounded-lg">
+                            <option value="5">5 días</option>
+                            <option value="6">6 días</option>
+                        </select>
+                    </div>
                 </div>
-
-                <div class="pt-2">
-                    <button onclick="quitarTurno()" class="w-full py-3 bg-red-500/10 text-red-400 hover:bg-red-500/20 rounded-xl font-bold text-sm border border-red-500/20 transition">
-                        Limpiar Día
-                    </button>
+                <div>
+                    <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Cargo</label>
+                    <input type="text" id="editCargo" class="w-full p-3 bg-gray-50 border-gray-200 rounded-lg">
                 </div>
+                <div>
+                    <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Empresa</label>
+                    <input type="text" id="editEmpresa" class="w-full p-3 bg-gray-50 border-gray-200 rounded-lg">
+                </div>
+                <button onclick="guardarPerfil()" class="w-full py-3 bg-blue-600 text-white font-bold rounded-xl mt-2">GUARDAR CAMBIOS</button>
             </div>
         </div>
     </div>
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <div id="turnoModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 hidden backdrop-blur-sm p-4">
+        <div class="bg-white p-6 rounded-2xl w-full max-w-xs shadow-2xl animate-slide-up">
+            <h3 class="text-lg font-bold text-center mb-4 text-gray-800">Día <span id="modalDiaNum" class="text-blue-600"></span></h3>
+            
+            <div class="grid grid-cols-2 gap-2 mb-4">
+                <button onclick="agregarTurno('dia')" class="p-3 bg-yellow-50 text-yellow-700 border border-yellow-200 rounded-lg font-bold text-sm hover:bg-yellow-100">DÍA</button>
+                <button onclick="agregarTurno('noche')" class="p-3 bg-indigo-50 text-indigo-700 border border-indigo-200 rounded-lg font-bold text-sm hover:bg-indigo-100">NOCHE</button>
+            </div>
+            
+            <button onclick="marcarAdministrativo()" class="w-full mb-4 p-3 bg-blue-50 text-blue-700 border border-blue-200 rounded-lg font-bold text-sm flex items-center justify-center gap-2 hover:bg-blue-100">
+                <i class="fas fa-file-contract"></i> DÍA ADMINISTRATIVO
+            </button>
+
+            <button onclick="quitarTurno()" class="w-full p-3 text-red-500 hover:bg-red-50 rounded-lg font-bold text-sm">Borrar Eventos</button>
+            <button onclick="document.getElementById('turnoModal').classList.add('hidden')" class="w-full mt-2 text-gray-400 text-sm">Cancelar</button>
+        </div>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script type="module">
         window.SUPABASE_URL = 'https://kjhrxdnwuwdmktdwuhdi.supabase.co';

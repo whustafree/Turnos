@@ -1,110 +1,107 @@
-/* 1. Fuentes y Animaciones */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;700;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
 
 :root {
-    /* Paleta de colores "Pro" (Dark Slate) */
-    --bg-body: #0f172a;   /* Fondo muy oscuro (Slate 900) */
-    --bg-card: #1e293b;   /* Tarjetas (Slate 800) */
-    --text-main: #f1f5f9; /* Texto principal (Slate 100) */
-    --text-muted: #94a3b8; /* Texto secundario (Slate 400) */
+    /* Paleta Modo Claridad */
+    --bg-body: #f3f4f6;       /* Gris muy claro (Humo) */
+    --bg-card: #ffffff;       /* Blanco puro */
+    --text-main: #1f2937;     /* Gris oscuro corporativo */
+    --text-muted: #6b7280;    /* Gris medio */
     
-    --primary: #3b82f6;       /* Azul primario */
-    --primary-hover: #2563eb; /* Azul hover */
+    --primary: #2563eb;       /* Azul Corporativo */
+    --primary-hover: #1d4ed8;
     
-    /* Colores de Turnos (Vibrantes para resaltar en fondo oscuro) */
-    --turno-dia-bg: #fbbf24;       /* Amber 400 */
-    --turno-dia-text: #451a03;     /* Amber 950 */
-    
-    --turno-noche-bg: #4f46e5;     /* Indigo 600 */
-    --turno-noche-text: #e0e7ff;   /* Indigo 100 */
-    
-    --turno-extra-dia-bg: #f97316; /* Orange 500 */
-    --turno-extra-dia-text: #431407; /* Orange 950 */
-    
-    --turno-extra-noche-bg: #7c3aed; /* Violet 600 */
-    --turno-extra-noche-text: #f3e8ff; /* Violet 100 */
+    --success: #10b981;       /* Verde para días trabajados/aprobado */
+    --danger: #ef4444;        /* Rojo suave para descansos/alertas */
+    --warning: #f59e0b;       /* Amarillo para vacaciones */
+    --info: #3b82f6;          /* Azul para administrativos */
+
+    /* Bordes y Sombras */
+    --border-color: #e5e7eb;
+    --shadow-card: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+    --radius: 16px;
 }
 
-/* 2. Estilos Generales */
 body {
     background-color: var(--bg-body);
     color: var(--text-main);
-    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    font-family: 'Inter', sans-serif;
     -webkit-tap-highlight-color: transparent;
-    overflow-x: hidden; /* Evita scroll horizontal */
 }
 
-/* 3. Componentes UI */
+/* Header Fijo */
+.fixed-header {
+    background-color: var(--bg-card);
+    border-bottom: 1px solid var(--border-color);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+}
+
 .card {
     background-color: var(--bg-card);
-    border: 1px solid rgba(255, 255, 255, 0.05);
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
-    backdrop-filter: blur(10px); /* Efecto vidrio sutil */
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-card);
+    transition: transform 0.2s ease;
 }
 
-/* Tabs / Pestañas */
-.tab-btn {
-    color: var(--text-muted);
-    transition: all 0.2s ease;
-}
-.tab-btn:hover {
-    color: var(--text-main);
-}
-.tab-btn.active {
-    color: var(--primary);
-    border-bottom: 2px solid var(--primary);
-}
-
-/* 4. Calendario y Días */
+/* Calendario Estilo "Clean" */
 .day {
-    min-height: 85px; /* Altura cómoda para ver turnos */
-    background-color: #1e293b;
-    border: 1px solid #334155;
-    transition: transform 0.1s, border-color 0.2s, background-color 0.2s;
+    min-height: 90px;
+    background-color: #ffffff;
+    border: 1px solid #f3f4f6;
+    transition: all 0.2s;
 }
+.day:hover { background-color: #f9fafb; border-color: var(--primary); }
+.day.today { border: 2px solid var(--primary); background-color: #eff6ff; }
 
-.day:active { transform: scale(0.98); } /* Efecto de click */
+/* Estados Especiales */
+.day.vacaciones { background-color: #fef3c7; border-color: #fcd34d; } /* Amarillo suave */
+.day.administrativo { background-color: #dbeafe; border-color: #93c5fd; } /* Azul suave */
 
-.day.today { 
-    border: 2px solid var(--primary); 
-    background-color: rgba(59, 130, 246, 0.1); 
-    position: relative;
-    z-index: 10;
-}
-
-/* Patrón rayado para días bloqueados/pasados si se usa */
-.day.locked { 
-    background-image: repeating-linear-gradient(45deg, transparent, transparent 5px, rgba(0,0,0,0.2) 5px, rgba(0,0,0,0.2) 10px); 
-}
-
-/* 5. Badges (Etiquetas) de Turnos */
+/* Badges de Turnos (Píldoras) */
 .turno-badge {
-    font-size: 0.65rem; /* Texto pequeño y nítido */
-    font-weight: 800;
+    font-size: 0.65rem;
+    font-weight: 700;
     text-transform: uppercase;
-    padding: 3px 2px;
-    border-radius: 4px;
-    margin-top: 3px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-    letter-spacing: 0.5px;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    padding: 3px 8px;
+    border-radius: 9999px;
+    margin-top: 4px;
+    display: inline-block;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
 }
 
-/* Asignación de colores a las clases generadas por JS */
-.t-dia { background-color: var(--turno-dia-bg); color: var(--turno-dia-text); }
-.t-noche { background-color: var(--turno-noche-bg); color: var(--turno-noche-text); }
-.t-extra-dia { background-color: var(--turno-extra-dia-bg); color: var(--turno-extra-dia-text); border: 1px solid rgba(255,255,255,0.2); }
-.t-extra-noche { background-color: var(--turno-extra-noche-bg); color: var(--turno-extra-noche-text); border: 1px solid rgba(255,255,255,0.2); }
+.t-dia { background-color: #fef3c7; color: #92400e; border: 1px solid #fde68a; }
+.t-noche { background-color: #e0e7ff; color: #3730a3; border: 1px solid #c7d2fe; }
+.t-extra { background-color: #fae8ff; color: #86198f; border: 1px solid #f0abfc; }
 
-/* 6. Formularios (Inputs oscuros) */
+/* Avatar */
+.avatar-circle {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background-color: var(--primary);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    font-size: 1.2rem;
+    border: 2px solid white;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+/* Animaciones */
+.animate-slide-up { animation: slideUp 0.3s ease-out; }
+@keyframes slideUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+/* Inputs Modernos */
 input, select, textarea {
-    background-color: #0f172a !important; /* Fondo oscuro */
-    border: 1px solid #334155 !important; /* Borde sutil */
-    color: white !important;
-    border-radius: 0.75rem; /* rounded-xl */
+    background-color: #f9fafb !important;
+    border: 1px solid #d1d5db !important;
+    color: #1f2937 !important;
+    border-radius: 10px;
 }
-
 input:focus, select:focus, textarea:focus {
-    border-
+    border-color: var(--primary) !important;
+    ring: 2px solid var(--primary);
+    background-color: #fff !important;
+}
