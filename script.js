@@ -13,11 +13,17 @@ let perfil = {
 let diaSeleccionado = null;
 let feriadosCache = {};
 
+// --- CICLOS DEFINIDOS AL INICIO (CRUCIAL PARA QUE FUNCIONE LA RESTAURACIÓN) ---
+const CICLOS_3X3 = {
+    '1': ['dia', 'dia', 'dia'], '2': ['noche', 'noche', 'noche'], '3': ['dia', 'noche', 'dia'],
+    '4': ['noche', 'noche', 'dia'], '5': ['noche', 'dia', 'noche'], '6': ['dia', 'noche', 'noche'],
+    '7': ['dia', 'dia', 'noche'], '8': ['dia', 'noche', 'dia'], '9': ['noche', 'dia', 'dia']
+};
+
 // --- 1. CONFIGURACIÓN Y TEMA ---
 window.toggleTheme = () => {
     const body = document.body;
     const isDark = body.getAttribute('data-theme') === 'dark';
-    
     if (isDark) {
         body.removeAttribute('data-theme');
         localStorage.setItem('theme', 'light');
@@ -36,7 +42,7 @@ function actualizarIconoTema() {
     }
 }
 
-// --- 2. FERIADOS (CHILE) ---
+// --- 2. LÓGICA DE FERIADOS (CHILE) ---
 const FERIADOS = {
     'Año Nuevo': y => new Date(y, 0, 1),
     'Viernes Santo': y => calcularSemanaSanta(y, -2),
@@ -510,13 +516,6 @@ window.guardarPerfil = async () => {
     perfil.vacacionesTotal = parseInt(document.getElementById('editVacacionesTotal').value);
     await saveData();
     window.cerrarPerfil();
-};
-
-// --- CICLOS ---
-const CICLOS_3X3 = {
-    '1': ['dia', 'dia', 'dia'], '2': ['noche', 'noche', 'noche'], '3': ['dia', 'noche', 'dia'],
-    '4': ['noche', 'noche', 'dia'], '5': ['noche', 'dia', 'noche'], '6': ['dia', 'noche', 'noche'],
-    '7': ['dia', 'dia', 'noche'], '8': ['dia', 'noche', 'dia'], '9': ['noche', 'dia', 'dia']
 };
 
 window.aplicarCiclo3x3 = async () => {
