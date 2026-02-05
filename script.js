@@ -1,497 +1,178 @@
-let turnos = {};
-let perfil = {
-    nombre: 'Usuario',
-    edad: '',
-    cargo: '',
-    empresa: '',
-    adminTotal: 6,
-    adminUsados: 0,
-    vacacionesTotal: 15,
-    vacacionesUsadas: 0
-};
-let diaSeleccionado = null;
-let feriadosCache = {};
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <link rel="manifest" href="manifest.json">
+    <title>Gestión de Turnos</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="transition-colors duration-300 pb-20">
 
-// --- 1. LÓGICA DE FERIADOS (CHILE) ---
-const FERIADOS = {
-    'Año Nuevo': y => new Date(y, 0, 1),
-    'Viernes Santo': y => calcularSemanaSanta(y, -2),
-    'Sábado Santo': y => calcularSemanaSanta(y, -1),
-    'Día del Trabajo': y => new Date(y, 4, 1),
-    'Glorias Navales': y => new Date(y, 4, 21),
-    'San Pedro y Pablo': y => { let d = new Date(y, 5, 29); return d.getDay()===1 ? d : new Date(y, 5, 29); }, 
-    'Virgen del Carmen': y => new Date(y, 6, 16),
-    'Asunción': y => new Date(y, 7, 15),
-    'Fiestas Patrias': y => new Date(y, 8, 18),
-    'Glorias del Ejército': y => new Date(y, 8, 19),
-    'Encuentro Dos Mundos': y => new Date(y, 9, 12),
-    'Inmaculada': y => new Date(y, 11, 8),
-    'Navidad': y => new Date(y, 11, 25)
-};
+    <div id="loginScreen" class="fixed inset-0 z-50 flex items-center justify-center bg-white dark:bg-gray-900 p-6 hidden">
+        <div class="w-full max-w-sm text-center">
+            <div class="mb-8">
+                <i class="fas fa-cube text-6xl text-blue-600 mb-4"></i>
+                <h1 class="text-3xl font-bold text-gray-900 dark:text-white">Portal Turnos</h1>
+                <p class="text-gray-500 dark:text-gray-400 mt-2">Sincronización en la nube</p>
+            </div>
+            <input type="email" id="loginEmail" placeholder="Correo" class="w-full p-4 mb-3 border border-gray-300 dark:border-gray-700 rounded-xl bg-gray-50 dark:bg-gray-800 text-lg dark:text-white">
+            <input type="password" id="loginPass" placeholder="Contraseña" class="w-full p-4 mb-6 border border-gray-300 dark:border-gray-700 rounded-xl bg-gray-50 dark:bg-gray-800 text-lg dark:text-white">
+            <button onclick="login()" class="w-full py-4 bg-blue-600 text-white rounded-xl font-bold text-lg shadow-lg hover:bg-blue-700 transition">INICIAR SESIÓN</button>
+            <button onclick="registro()" class="mt-4 text-blue-600 dark:text-blue-400 font-semibold text-sm">Crear cuenta nueva</button>
+        </div>
+    </div>
 
-function calcularSemanaSanta(ano, dias) {
-    const a=ano%19, b=Math.floor(ano/100), c=ano%100, d=Math.floor(b/4), e=b%4, f=Math.floor((b+8)/25), g=Math.floor((b-f+1)/3), h=(19*a+b-d-g+15)%30, i=Math.floor(c/4), k=c%4, l=(32+2*e+2*i-h-k)%7, m=Math.floor((a+11*h+22*l)/451), mes=Math.floor((h+l-7*m+114)/31)-1, dia=((h+l-7*m+114)%31)+1;
-    return new Date(new Date(ano,mes,dia).getTime() + dias * 86400000);
-}
-
-function esFeriado(fecha) {
-    const y = fecha.getFullYear();
-    if (!feriadosCache[y]) {
-        feriadosCache[y] = {};
-        Object.values(FERIADOS).forEach(fn => feriadosCache[y][fn(y).toDateString()] = true);
-    }
-    return feriadosCache[y][fecha.toDateString()];
-}
-
-function esDiaHabil(fecha) {
-    const diaSemana = fecha.getDay();
-    // 0 = Domingo, 6 = Sábado. Feriados tampoco son hábiles para vacaciones legales.
-    if (diaSemana === 0 || diaSemana === 6) return false;
-    if (esFeriado(fecha)) return false;
-    return true;
-}
-
-// --- 2. SUPABASE ---
-async function checkSession() {
-    const { data: { session } } = await window.supabase.auth.getSession();
-    if (session) {
-        document.getElementById('loginScreen').classList.add('hidden');
-        document.getElementById('appContent').classList.remove('hidden');
-        await loadData(session.user.id);
-    } else {
-        document.getElementById('loginScreen').classList.remove('hidden');
-    }
-}
-
-window.supabase.auth.onAuthStateChange(() => checkSession());
-
-window.login = async () => {
-    const email = document.getElementById('loginEmail').value.trim();
-    const pass = document.getElementById('loginPass').value.trim();
-    const { error } = await window.supabase.auth.signInWithPassword({ email, password: pass });
-    if (error) alert(error.message);
-};
-
-window.registro = async () => {
-    const email = document.getElementById('loginEmail').value.trim();
-    const pass = document.getElementById('loginPass').value.trim();
-    const { error } = await window.supabase.auth.signUp({ email, password: pass });
-    if (error) alert(error.message); else alert("Cuenta creada.");
-};
-
-window.cerrarSesion = () => window.supabase.auth.signOut();
-
-async function saveData() {
-    const { data: { user } } = await window.supabase.auth.getUser();
-    if (user) {
-        await window.supabase.from('usuarios_turnos').upsert({ 
-            user_id: user.id, 
-            datos_turnos: turnos,
-            datos_perfil: perfil, 
-            updated_at: new Date() 
-        }, { onConflict: 'user_id' });
-    }
-    updateUI();
-}
-
-async function loadData(uid) {
-    const { data } = await window.supabase.from('usuarios_turnos').select('datos_turnos, datos_perfil').eq('user_id', uid).maybeSingle();
-    if (data) {
-        turnos = data.datos_turnos || {};
-        if (data.datos_perfil) perfil = { ...perfil, ...data.datos_perfil };
-        updateUI();
-    }
-}
-
-function updateUI() {
-    window.renderCalendar();
-    updateDashboard();
-    renderListaAusencias();
-}
-
-// --- DASHBOARD Y PERFIL ---
-function updateDashboard() {
-    document.getElementById('userNombre').innerText = perfil.nombre || 'Usuario';
-    document.getElementById('userCargo').innerText = perfil.cargo || 'Cargo no def.';
-    document.getElementById('userEmpresa').innerText = perfil.empresa || 'Empresa';
-    
-    // Iniciales Avatar
-    const iniciales = (perfil.nombre || 'U').split(' ').map(n=>n[0]).join('').substring(0,2).toUpperCase();
-    document.getElementById('dashboardAvatar').innerText = iniciales;
-    document.getElementById('headerAvatar').innerText = iniciales;
-
-    // Calcular Saldos (Escaneo Anual)
-    const y = parseInt(document.getElementById('yearSelect').value);
-    let usadosAdmin = 0;
-    let usadosVac = 0; // Solo hábiles
-    
-    if (turnos[y]) {
-        Object.keys(turnos[y]).forEach(m => {
-            Object.keys(turnos[y][m]).forEach(d => {
-                const diaData = turnos[y][m][d];
-                const fecha = new Date(y, m, d);
-                
-                if (diaData.tipo === 'administrativo') {
-                    usadosAdmin++;
-                } else if (diaData.tipo === 'vacaciones') {
-                    // REGLA CHILENA: Solo descontar si es hábil
-                    if (esDiaHabil(fecha)) {
-                        usadosVac++;
-                    }
-                }
-            });
-        });
-    }
-    perfil.adminUsados = usadosAdmin;
-    perfil.vacacionesUsadas = usadosVac;
-    
-    // Actualizar UI
-    document.getElementById('adminUsados').innerText = usadosAdmin;
-    document.getElementById('adminTotal').innerText = perfil.adminTotal;
-    const porcAdmin = Math.min(100, (usadosAdmin / perfil.adminTotal) * 100);
-    document.getElementById('adminProgress').style.width = `${porcAdmin}%`;
-
-    document.getElementById('vacacionesUsadas').innerText = usadosVac;
-    document.getElementById('vacacionesTotal').innerText = perfil.vacacionesTotal || 15;
-    const porcVac = Math.min(100, (usadosVac / (perfil.vacacionesTotal || 15)) * 100);
-    document.getElementById('vacacionesProgress').style.width = `${porcVac}%`;
-}
-
-// --- GESTIÓN DE VACACIONES Y ADMINISTRATIVOS ---
-window.marcarAdministrativo = async () => {
-    if (perfil.adminUsados >= perfil.adminTotal) {
-        if(!confirm("⚠️ Ya usaste todos tus días administrativos. ¿Marcar igual?")) return;
-    }
-    const y = document.getElementById('yearSelect').value;
-    const m = document.getElementById('monthSelect').value;
-    
-    turnos[y][m][diaSeleccionado] = { 
-        tipo: 'administrativo', 
-        turnos: ['Admin'],
-        estado: 'aprobado',
-        locked: true // Bloqueado
-    };
-    await saveData();
-    document.getElementById('turnoModal').classList.add('hidden');
-};
-
-window.guardarVacaciones = async () => {
-    const startStr = document.getElementById('vacStart').value;
-    const endStr = document.getElementById('vacEnd').value;
-    const aprobado = document.getElementById('vacAprobado').checked;
-
-    if (!startStr || !endStr) return alert("Selecciona fechas válidas");
-
-    // Crear fechas locales para evitar desfase
-    const [sy, sm, sd] = startStr.split('-').map(Number);
-    const start = new Date(sy, sm - 1, sd);
-    
-    const [ey, em, ed] = endStr.split('-').map(Number);
-    const end = new Date(ey, em - 1, ed);
-    
-    if (end < start) return alert("La fecha de fin debe ser posterior al inicio");
-
-    let loopDate = new Date(start);
-    while (loopDate <= end) {
-        const cy = loopDate.getFullYear();
-        const cm = loopDate.getMonth();
-        const cd = loopDate.getDate();
-
-        if(!turnos[cy]) turnos[cy] = {};
-        if(!turnos[cy][cm]) turnos[cy][cm] = {};
-
-        // Guardamos el día como vacaciones visualmente
-        turnos[cy][cm][cd] = {
-            tipo: 'vacaciones',
-            turnos: ['VAC'],
-            estado: aprobado ? 'aprobado' : 'pendiente',
-            locked: aprobado // Si está aprobado, se bloquea
-        };
+    <div id="appContent" class="hidden">
         
-        loopDate.setDate(loopDate.getDate() + 1);
-    }
-    await saveData();
-    alert("Vacaciones registradas correctamente.");
-};
-
-window.eliminarAusencia = async (fechaStr) => {
-    if(!confirm("¿Eliminar este registro de ausencia?")) return;
-    const [d, m, y] = fechaStr.split('/').map(Number);
-    // Ajustar mes (0-index)
-    const mesIdx = m - 1;
-    
-    if (turnos[y]?.[mesIdx]?.[d]) {
-        delete turnos[y][mesIdx][d];
-        await saveData();
-    }
-};
-
-window.renderListaAusencias = () => {
-    const container = document.getElementById('listaAusencias');
-    if (!container) return;
-    container.innerHTML = '';
-
-    const y = parseInt(document.getElementById('yearSelect').value);
-    
-    // Recopilar todas las ausencias del año
-    let lista = [];
-    if (turnos[y]) {
-        Object.keys(turnos[y]).forEach(m => {
-            Object.keys(turnos[y][m]).forEach(d => {
-                const data = turnos[y][m][d];
-                if (data.tipo === 'vacaciones' || data.tipo === 'administrativo') {
-                    lista.push({
-                        fecha: new Date(y, m, d),
-                        tipo: data.tipo,
-                        estado: data.estado || 'pendiente'
-                    });
-                }
-            });
-        });
-    }
-
-    // Ordenar por fecha
-    lista.sort((a, b) => a.fecha - b.fecha);
-
-    if (lista.length === 0) {
-        container.innerHTML = '<p class="text-center text-gray-400 py-4">No hay ausencias registradas este año.</p>';
-        return;
-    }
-
-    // Renderizar lista (Simplificada día a día para permitir borrado individual)
-    lista.forEach(item => {
-        const fechaFmt = item.fecha.toLocaleDateString('es-CL');
-        const esHabil = item.tipo === 'vacaciones' ? esDiaHabil(item.fecha) : true;
-        const color = item.tipo === 'vacaciones' ? 'text-yellow-600 bg-yellow-50' : 'text-blue-600 bg-blue-50';
-        const label = item.tipo === 'vacaciones' ? 'Vacaciones' : 'Administrativo';
-        const descuento = (item.tipo === 'vacaciones' && !esHabil) ? '<span class="text-[10px] text-gray-400 ml-2">(No descuenta)</span>' : '';
-
-        const html = `
-            <div class="flex justify-between items-center p-3 mb-2 bg-white border border-gray-100 rounded-xl shadow-sm">
-                <div class="flex items-center gap-3">
-                    <div class="p-2 rounded-lg ${color}">
-                        <i class="fas ${item.tipo === 'vacaciones' ? 'fa-umbrella-beach' : 'fa-file-contract'}"></i>
-                    </div>
-                    <div>
-                        <div class="font-bold text-sm text-gray-700">${label}</div>
-                        <div class="text-xs text-gray-500">${fechaFmt} ${descuento}</div>
-                    </div>
+        <header class="fixed-header fixed top-0 w-full z-40 px-4 py-3 flex justify-between items-center">
+            <div class="flex items-center gap-3">
+                <div class="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-white shadow-lg">
+                    <i class="fas fa-layer-group"></i>
                 </div>
-                <div class="flex items-center gap-2">
-                    ${item.estado === 'aprobado' ? '<i class="fas fa-lock text-gray-300 text-xs" title="Aprobado"></i>' : ''}
-                    <button onclick="eliminarAusencia('${fechaFmt}')" class="text-red-400 hover:text-red-600 p-2">
-                        <i class="fas fa-trash"></i>
-                    </button>
+                <span class="font-bold text-lg tracking-tight">TurnosApp</span>
+            </div>
+            <div class="flex items-center gap-4">
+                <button onclick="toggleTheme()" class="w-8 h-8 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center transition-colors">
+                    <i id="themeIcon" class="fas fa-moon text-gray-600 dark:text-yellow-400"></i>
+                </button>
+                <div id="headerAvatar" class="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center text-xs font-bold text-blue-600 dark:text-blue-200 cursor-pointer border border-blue-200 dark:border-blue-700" onclick="abrirPerfil()">US</div>
+            </div>
+        </header>
+
+        <div class="mt-20 container mx-auto px-4 max-w-5xl space-y-6">
+
+            <div class="card p-6 flex flex-col md:flex-row items-center md:items-start gap-6 relative overflow-hidden">
+                <div class="absolute top-0 right-0 w-32 h-32 bg-blue-50 dark:bg-blue-900/20 rounded-bl-full -z-0"></div>
+                <div class="relative z-10" onclick="abrirPerfil()">
+                    <div id="dashboardAvatar" class="avatar-circle w-20 h-20 text-2xl shadow-lg cursor-pointer">US</div>
+                </div>
+                <div class="text-center md:text-left flex-1 relative z-10 w-full">
+                    <h2 id="userNombre" class="text-2xl font-bold text-gray-900 dark:text-white">Usuario</h2>
+                    <p class="text-gray-500 dark:text-gray-400 text-sm mb-3"><span id="userCargo">Cargo</span> en <span id="userEmpresa">Empresa</span></p>
+                    <div class="grid grid-cols-2 gap-3 mt-4">
+                        <div class="bg-blue-50 dark:bg-blue-900/30 p-3 rounded-xl border border-blue-100 dark:border-blue-800">
+                            <div class="flex justify-between items-center mb-1"><span class="text-[10px] font-bold text-blue-800 dark:text-blue-300 uppercase">ADMIN</span></div>
+                            <div class="text-xl font-bold text-blue-700 dark:text-blue-200"><span id="adminUsados">0</span><span class="text-sm font-normal">/<span id="adminTotal">6</span></span></div>
+                            <div class="w-full bg-blue-200 dark:bg-blue-800 h-1.5 rounded-full mt-1"><div id="adminProgress" class="bg-blue-600 h-full" style="width: 0%"></div></div>
+                        </div>
+                        <div class="bg-yellow-50 dark:bg-yellow-900/30 p-3 rounded-xl border border-yellow-100 dark:border-yellow-800">
+                            <div class="flex justify-between items-center mb-1"><span class="text-[10px] font-bold text-yellow-800 dark:text-yellow-300 uppercase">VACACIONES</span></div>
+                            <div class="text-xl font-bold text-yellow-700 dark:text-yellow-200"><span id="vacacionesUsadas">0</span><span class="text-sm font-normal">/<span id="vacacionesTotal">15</span></span></div>
+                            <div class="w-full bg-yellow-200 dark:bg-yellow-800 h-1.5 rounded-full mt-1"><div id="vacacionesProgress" class="bg-yellow-500 h-full" style="width: 0%"></div></div>
+                        </div>
+                    </div>
                 </div>
             </div>
-        `;
-        container.innerHTML += html;
-    });
-};
 
-// --- CALENDARIO RENDER ---
-window.renderCalendar = () => {
-    const y = parseInt(document.getElementById('yearSelect').value);
-    const m = parseInt(document.getElementById('monthSelect').value);
-    const grid = document.getElementById('calendar');
-    document.getElementById('monthYear').innerText = new Date(y, m).toLocaleString('es-ES', { month: 'long', year: 'numeric' });
+            <div class="card p-2 flex justify-between items-center shadow-sm">
+                <button onclick="cambiarMes(-1)" class="w-10 h-10 flex items-center justify-center text-gray-400 hover:text-blue-600 dark:hover:text-white rounded-lg"><i class="fas fa-chevron-left"></i></button>
+                <div class="text-center cursor-pointer" onclick="goToToday()">
+                    <h3 id="monthYear" class="text-lg font-bold text-gray-800 dark:text-white uppercase"></h3>
+                    <div class="text-[10px] text-blue-500 font-bold tracking-widest">HOY</div>
+                </div>
+                <button onclick="cambiarMes(1)" class="w-10 h-10 flex items-center justify-center text-gray-400 hover:text-blue-600 dark:hover:text-white rounded-lg"><i class="fas fa-chevron-right"></i></button>
+                <select id="monthSelect" class="hidden" onchange="actualizarCalendario()"></select>
+                <select id="yearSelect" class="hidden" onchange="actualizarCalendario()"></select>
+            </div>
 
-    grid.innerHTML = '';
-    const firstDay = (new Date(y, m, 1).getDay() + 6) % 7;
-    const totalDays = new Date(y, m + 1, 0).getDate();
+            <div class="grid grid-cols-3 gap-2">
+                <button onclick="cambiarPestaña('calendario')" class="tab-btn active py-3 border rounded-xl font-bold text-sm shadow-sm transition-all">Calendario</button>
+                <button onclick="cambiarPestaña('configuracion')" class="tab-btn py-3 border rounded-xl font-bold text-sm shadow-sm transition-all">Planificar</button>
+                <button onclick="cambiarPestaña('ausencias')" class="tab-btn py-3 border rounded-xl font-bold text-sm shadow-sm transition-all">Ausencias</button>
+            </div>
 
-    for(let i=0; i<firstDay; i++) grid.innerHTML += `<div></div>`;
+            <div id="tab-calendario" class="tab-content block animate-slide-up">
+                <div class="grid grid-cols-7 mb-2 text-center text-xs font-bold text-gray-400"><div>LU</div><div>MA</div><div>MI</div><div>JU</div><div>VI</div><div class="text-blue-500">SA</div><div class="text-red-500">DO</div></div>
+                <div id="calendar" class="grid grid-cols-7 gap-1 md:gap-2"></div>
+            </div>
 
-    for(let d=1; d<=totalDays; d++) {
-        const data = turnos[y]?.[m]?.[d];
-        const div = document.createElement('div');
-        let classes = "day rounded-xl p-1 flex flex-col justify-between cursor-pointer relative";
-        
-        if (data?.tipo === 'vacaciones') classes += " vacaciones";
-        else if (data?.tipo === 'administrativo') classes += " administrativo";
-        
-        // Bloqueo visual
-        if (data?.locked) classes += " opacity-90";
+            <div id="tab-configuracion" class="tab-content hidden animate-slide-up">
+                <div class="card p-6">
+                    <h3 class="font-bold text-lg mb-4 text-gray-800 dark:text-white">Generador 3x3</h3>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase mb-2">Ciclo</label>
+                            <select id="ciclo3x3Select" class="w-full p-4 bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700 rounded-xl text-gray-700 dark:text-white">
+                                <option value="1">1. Solo Día (D-D-D)</option>
+                                <option value="2">2. Solo Noche (N-N-N)</option>
+                                <option value="3">3. Alternando (D-N-D)</option>
+                                <option value="4">4. Noche-Noche-Día</option>
+                                <option value="5">5. Noche-Día-Noche</option>
+                                <option value="6">6. Día-Noche-Noche</option>
+                                <option value="7">7. Día-Día-Noche</option>
+                                <option value="8">8. Día-Noche-Día</option>
+                                <option value="9">9. Noche-Día-Día</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase mb-2">Inicio</label>
+                            <input type="date" id="fechaInicio" class="w-full p-4 bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700 rounded-xl text-gray-700 dark:text-white">
+                        </div>
+                        <button onclick="aplicarCiclo3x3()" class="w-full py-4 bg-blue-600 text-white font-bold rounded-xl shadow-lg hover:bg-blue-700">APLICAR</button>
+                    </div>
+                </div>
+            </div>
 
-        let content = `<div class="flex justify-between"><span class="text-sm font-bold text-gray-500 ml-1">${d}</span>${data?.locked ? '<i class="fas fa-lock text-[10px] text-gray-400 mr-1"></i>' : ''}</div>`;
-        
-        if (data) {
-            if (data.tipo === 'vacaciones') {
-                content += `<div class="text-[10px] text-yellow-700 text-center font-bold mt-2 bg-yellow-100 rounded py-1 border border-yellow-200">VACACIONES</div>`;
-            } else if (data.tipo === 'administrativo') {
-                content += `<div class="text-[10px] text-blue-700 text-center font-bold mt-2 bg-blue-100 rounded py-1 border border-blue-200">ADMIN</div>`;
-            } else if (data.turnos) {
-                data.turnos.forEach(t => {
-                    let c = 't-dia';
-                    if(t.includes('noche')) c = 't-noche';
-                    if(t.includes('extra')) c = 't-extra';
-                    content += `<span class="turno-badge ${c} w-full text-center">${t === 'dia' ? 'DÍA' : (t==='noche'?'NOCHE':t)}</span>`;
-                });
-            }
-        }
+            <div id="tab-ausencias" class="tab-content hidden animate-slide-up">
+                <div class="card p-6 mb-6 border-l-4 border-yellow-400">
+                    <h3 class="font-bold text-lg mb-4 text-gray-800 dark:text-white flex items-center gap-2"><i class="fas fa-plus-circle text-yellow-500"></i> Registrar Vacaciones</h3>
+                    <div class="grid grid-cols-2 gap-4 mb-4">
+                        <div><label class="block text-xs font-bold text-gray-400 uppercase mb-1">Desde</label><input type="date" id="vacStart" class="w-full p-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-gray-700 dark:text-white"></div>
+                        <div><label class="block text-xs font-bold text-gray-400 uppercase mb-1">Hasta</label><input type="date" id="vacEnd" class="w-full p-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-gray-700 dark:text-white"></div>
+                    </div>
+                    <div class="flex items-center gap-3 mb-4 bg-yellow-50 dark:bg-yellow-900/20 p-3 rounded-lg">
+                        <input type="checkbox" id="vacAprobado" class="w-5 h-5 text-blue-600 rounded">
+                        <div><label for="vacAprobado" class="text-sm font-bold text-gray-700 dark:text-gray-200">Aprobadas (Bloquear)</label></div>
+                    </div>
+                    <button onclick="guardarVacaciones()" class="w-full py-3 bg-yellow-500 text-white font-bold rounded-xl hover:bg-yellow-600 shadow-md">GUARDAR PERIODO</button>
+                </div>
+                <div class="card p-6">
+                    <h3 class="font-bold text-lg mb-4 text-gray-800 dark:text-white">Historial de Ausencias</h3>
+                    <div id="listaAusencias" class="space-y-2 max-h-80 overflow-y-auto pr-2"><p class="text-gray-400 text-center py-4">Cargando...</p></div>
+                </div>
+            </div>
 
-        div.className = classes;
-        div.innerHTML = content;
-        div.onclick = () => {
-            diaSeleccionado = d;
-            document.getElementById('modalDiaNum').innerText = d;
-            
-            // Si está bloqueado, avisar (o permitir desbloquear si es necesario en el futuro)
-            if (data?.locked && !confirm("Este día está aprobado/bloqueado. ¿Deseas editarlo igual?")) return;
+        </div>
+    </div>
 
-            document.getElementById('turnoModal').classList.remove('hidden');
-            document.getElementById('turnoModal').classList.add('flex');
-        };
-        grid.appendChild(div);
-    }
-};
+    <div id="perfilModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 hidden backdrop-blur-sm p-4">
+        <div class="bg-white dark:bg-gray-800 p-6 rounded-2xl w-full max-w-sm shadow-2xl animate-slide-up">
+            <div class="flex justify-between items-center mb-6"><h3 class="text-xl font-bold text-gray-800 dark:text-white">Editar Perfil</h3><button onclick="cerrarPerfil()" class="text-gray-400 hover:text-white"><i class="fas fa-times text-xl"></i></button></div>
+            <div class="space-y-4">
+                <div><label class="block text-xs font-bold text-gray-500 uppercase mb-1">Nombre</label><input type="text" id="editNombre" class="w-full p-3 bg-gray-50 dark:bg-gray-700 border-gray-200 dark:border-gray-600 rounded-lg text-gray-800 dark:text-white"></div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div><label class="block text-xs font-bold text-gray-500 uppercase mb-1">Días Admin</label><select id="editAdminTotal" class="w-full p-3 bg-gray-50 dark:bg-gray-700 border-gray-200 dark:border-gray-600 rounded-lg text-gray-800 dark:text-white"><option value="5">5 días</option><option value="6">6 días</option></select></div>
+                    <div><label class="block text-xs font-bold text-gray-500 uppercase mb-1">Total Vac.</label><input type="number" id="editVacacionesTotal" class="w-full p-3 bg-gray-50 dark:bg-gray-700 border-gray-200 dark:border-gray-600 rounded-lg text-gray-800 dark:text-white"></div>
+                </div>
+                <div><label class="block text-xs font-bold text-gray-500 uppercase mb-1">Cargo</label><input type="text" id="editCargo" class="w-full p-3 bg-gray-50 dark:bg-gray-700 border-gray-200 dark:border-gray-600 rounded-lg text-gray-800 dark:text-white"></div>
+                <div><label class="block text-xs font-bold text-gray-500 uppercase mb-1">Empresa</label><input type="text" id="editEmpresa" class="w-full p-3 bg-gray-50 dark:bg-gray-700 border-gray-200 dark:border-gray-600 rounded-lg text-gray-800 dark:text-white"></div>
+                <button onclick="guardarPerfil()" class="w-full py-3 bg-blue-600 text-white font-bold rounded-xl mt-2">GUARDAR</button>
+            </div>
+        </div>
+    </div>
 
-// --- PERFIL HELPERS ---
-window.abrirPerfil = () => {
-    document.getElementById('editNombre').value = perfil.nombre;
-    document.getElementById('editCargo').value = perfil.cargo;
-    document.getElementById('editEmpresa').value = perfil.empresa;
-    document.getElementById('editAdminTotal').value = perfil.adminTotal;
-    document.getElementById('editVacacionesTotal').value = perfil.vacacionesTotal || 15;
-    document.getElementById('perfilModal').classList.remove('hidden');
-};
+    <div id="turnoModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 hidden backdrop-blur-sm p-4">
+        <div class="bg-white dark:bg-gray-800 p-6 rounded-2xl w-full max-w-xs shadow-2xl animate-slide-up">
+            <h3 class="text-lg font-bold text-center mb-4 text-gray-800 dark:text-white">Día <span id="modalDiaNum" class="text-blue-600"></span></h3>
+            <div class="grid grid-cols-2 gap-2 mb-4">
+                <button onclick="agregarTurno('dia')" class="p-3 bg-yellow-50 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400 border border-yellow-200 dark:border-yellow-700 rounded-lg font-bold text-sm">DÍA</button>
+                <button onclick="agregarTurno('noche')" class="p-3 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-700 rounded-lg font-bold text-sm">NOCHE</button>
+            </div>
+            <button onclick="marcarAdministrativo()" class="w-full mb-4 p-3 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 border border-blue-200 dark:border-blue-700 rounded-lg font-bold text-sm flex items-center justify-center gap-2"><i class="fas fa-file-contract"></i> DÍA ADMIN</button>
+            <button onclick="quitarTurno()" class="w-full p-3 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg font-bold text-sm">Borrar</button>
+            <button onclick="document.getElementById('turnoModal').classList.add('hidden')" class="w-full mt-2 text-gray-400 text-sm">Cancelar</button>
+        </div>
+    </div>
 
-window.cerrarPerfil = () => document.getElementById('perfilModal').classList.add('hidden');
-
-window.guardarPerfil = async () => {
-    perfil.nombre = document.getElementById('editNombre').value;
-    perfil.cargo = document.getElementById('editCargo').value;
-    perfil.empresa = document.getElementById('editEmpresa').value;
-    perfil.adminTotal = parseInt(document.getElementById('editAdminTotal').value);
-    perfil.vacacionesTotal = parseInt(document.getElementById('editVacacionesTotal').value);
-    await saveData();
-    window.cerrarPerfil();
-};
-
-// --- OTROS HELPERS ---
-window.agregarTurno = async (tipo) => {
-    const y = document.getElementById('yearSelect').value;
-    const m = document.getElementById('monthSelect').value;
-    if(!turnos[y]) turnos[y] = {};
-    if(!turnos[y][m]) turnos[y][m] = {};
-    
-    let current = [];
-    if(turnos[y][m][diaSeleccionado]?.tipo === 'turno') {
-        current = turnos[y][m][diaSeleccionado].turnos;
-    }
-    if(!current.includes(tipo)) current.push(tipo);
-    
-    turnos[y][m][diaSeleccionado] = { turnos: current, tipo: 'turno' };
-    await saveData();
-    document.getElementById('turnoModal').classList.add('hidden');
-};
-
-window.quitarTurno = async () => {
-    const y = document.getElementById('yearSelect').value;
-    const m = document.getElementById('monthSelect').value;
-    if(turnos[y]?.[m]?.[diaSeleccionado]) {
-        delete turnos[y][m][diaSeleccionado];
-        await saveData();
-    }
-    document.getElementById('turnoModal').classList.add('hidden');
-};
-
-window.cambiarPestaña = (id) => {
-    document.querySelectorAll('.tab-content').forEach(c => c.classList.add('hidden'));
-    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active', 'text-blue-600', 'ring-2'));
-    document.getElementById(`tab-${id}`).classList.remove('hidden');
-    event.currentTarget.classList.add('active', 'text-blue-600', 'ring-2');
-};
-
-window.cambiarMes = (v) => {
-    let m = parseInt(document.getElementById('monthSelect').value) + v;
-    let y = parseInt(document.getElementById('yearSelect').value);
-    if(m<0){m=11; y--;} if(m>11){m=0; y++;}
-    document.getElementById('monthSelect').value = m;
-    document.getElementById('yearSelect').value = y;
-    updateUI();
-};
-
-// --- CICLOS ---
-const CICLOS_3X3 = {
-    '1': ['dia', 'dia', 'dia'], '2': ['noche', 'noche', 'noche'], '3': ['dia', 'noche', 'dia'],
-    '4': ['noche', 'noche', 'dia'], '5': ['noche', 'dia', 'noche'], '6': ['dia', 'noche', 'noche'],
-    '7': ['dia', 'dia', 'noche'], '8': ['dia', 'noche', 'dia'], '9': ['noche', 'dia', 'dia']
-};
-
-window.aplicarCiclo3x3 = async () => {
-    const cicloId = document.getElementById('ciclo3x3Select').value;
-    const patronTrabajo = CICLOS_3X3[cicloId];
-    const fechaInput = document.getElementById('fechaInicio').value;
-    if (!fechaInput) return alert("Selecciona fecha inicio");
-    
-    const [iy, im, id] = fechaInput.split('-').map(Number);
-    const startDate = new Date(iy, im - 1, id); 
-    const y = parseInt(document.getElementById('yearSelect').value);
-    const m = parseInt(document.getElementById('monthSelect').value);
-    
-    if(!turnos[y]) turnos[y] = {};
-    if(!turnos[y][m]) turnos[y][m] = {};
-
-    const diasMes = new Date(y, m + 1, 0).getDate();
-    for(let d=1; d<=diasMes; d++) {
-        const currentDate = new Date(y, m, d);
-        if (currentDate < startDate) continue;
-        const diffDays = Math.floor((currentDate - startDate) / (1000 * 3600 * 24));
-        let pos = diffDays % 6; if(pos < 0) pos += 6;
-
-        // Solo sobrescribir si no está bloqueado (locked)
-        if (!turnos[y][m][d]?.locked) {
-            if (pos < 3) {
-                turnos[y][m][d] = { turnos: [patronTrabajo[pos]], tipo: 'turno' };
-            } else {
-                if(turnos[y][m][d] && turnos[y][m][d].tipo === 'turno') delete turnos[y][m][d];
-            }
-        }
-    }
-    await saveData();
-    alert("Ciclo aplicado (respetando días bloqueados)");
-};
-
-document.addEventListener('DOMContentLoaded', () => {
-    const ys = document.getElementById('yearSelect');
-    const ms = document.getElementById('monthSelect');
-    for(let i=2024; i<=2030; i++) ys.innerHTML+=`<option value="${i}">${i}</option>`;
-    ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'].forEach((m,i)=> ms.innerHTML+=`<option value="${i}">${m}</option>`);
-    const now = new Date();
-    ys.value = now.getFullYear();
-    ms.value = now.getMonth();
-    checkSession();
-});
-// Añade esto al final de tu archivo script.js existente (o reemplaza si prefieres)
-
-// --- TEMA (DARK MODE) ---
-function toggleTheme() {
-    const body = document.body;
-    const icon = document.getElementById('themeIcon');
-    
-    if (body.getAttribute('data-theme') === 'dark') {
-        body.removeAttribute('data-theme');
-        localStorage.setItem('theme', 'light');
-        icon.classList.remove('fa-sun');
-        icon.classList.add('fa-moon');
-    } else {
-        body.setAttribute('data-theme', 'dark');
-        localStorage.setItem('theme', 'dark');
-        icon.classList.remove('fa-moon');
-        icon.classList.add('fa-sun');
-    }
-}
-
-// Cargar preferencia al inicio
-document.addEventListener('DOMContentLoaded', () => {
-    // ... (tu código de inicialización existente) ...
-    
-    // Cargar Tema
-    const savedTheme = localStorage.getItem('theme');
-    if (savedTheme === 'dark') {
-        document.body.setAttribute('data-theme', 'dark');
-        const icon = document.getElementById('themeIcon');
-        if(icon) { icon.classList.remove('fa-moon'); icon.classList.add('fa-sun'); }
-    }
-});
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script type="module">
+        window.SUPABASE_URL = 'https://kjhrxdnwuwdmktdwuhdi.supabase.co';
+        window.SUPABASE_KEY = 'sb_publishable_0nvqhjvJiytEFeif99jVsg_eiqOtXh9';
+        window.supabase = supabase.createClient(window.SUPABASE_URL, window.SUPABASE_KEY);
+    </script>
+    <script type="module" src="script.js"></script>
+</body>
+</html>

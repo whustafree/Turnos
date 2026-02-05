@@ -1,32 +1,27 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
 
 :root {
-    /* Variables Base (Tema Claro por defecto) */
     --bg-body: #f3f4f6;
     --bg-card: #ffffff;
     --text-main: #1f2937;
     --text-muted: #6b7280;
     --border-color: #e5e7eb;
     --header-bg: #ffffff;
-    
     --primary: #2563eb;
     
-    /* Calendario */
     --day-bg: #ffffff;
     --day-hover: #f9fafb;
     --day-border: #f3f4f6;
     --day-today-bg: #eff6ff;
 }
 
-/* TEMA OSCURO */
 [data-theme="dark"] {
-    --bg-body: #0f172a;       /* Slate 900 */
-    --bg-card: #1e293b;       /* Slate 800 */
-    --text-main: #f1f5f9;     /* Slate 100 */
-    --text-muted: #94a3b8;    /* Slate 400 */
-    --border-color: #334155;  /* Slate 700 */
+    --bg-body: #0f172a;
+    --bg-card: #1e293b;
+    --text-main: #f1f5f9;
+    --text-muted: #94a3b8;
+    --border-color: #334155;
     --header-bg: #1e293b;
-    
     --day-bg: #1e293b;
     --day-hover: #334155;
     --day-border: #334155;
@@ -37,11 +32,10 @@ body {
     background-color: var(--bg-body);
     color: var(--text-main);
     font-family: 'Inter', sans-serif;
-    -webkit-tap-highlight-color: transparent;
     transition: background-color 0.3s ease, color 0.3s ease;
+    -webkit-tap-highlight-color: transparent;
 }
 
-/* Header Fijo */
 .fixed-header {
     background-color: var(--header-bg);
     border-bottom: 1px solid var(--border-color);
@@ -57,7 +51,6 @@ body {
     transition: background-color 0.3s ease, border-color 0.3s ease;
 }
 
-/* Calendario */
 .day {
     min-height: 90px;
     background-color: var(--day-bg);
@@ -67,30 +60,15 @@ body {
 .day:hover { background-color: var(--day-hover); border-color: var(--primary); }
 .day.today { border: 2px solid var(--primary); background-color: var(--day-today-bg); }
 
-/* Estados Especiales */
-.day.vacaciones { 
-    background-color: #fffbeb; border-color: #fcd34d; 
-}
-[data-theme="dark"] .day.vacaciones {
-    background-color: rgba(245, 158, 11, 0.1); border-color: rgba(245, 158, 11, 0.3);
-}
+.day.vacaciones { background-color: #fffbeb; border-color: #fcd34d; }
+[data-theme="dark"] .day.vacaciones { background-color: rgba(245, 158, 11, 0.1); border-color: rgba(245, 158, 11, 0.3); }
 
-.day.administrativo { 
-    background-color: #eff6ff; border-color: #93c5fd; 
-}
-[data-theme="dark"] .day.administrativo {
-    background-color: rgba(59, 130, 246, 0.1); border-color: rgba(59, 130, 246, 0.3);
-}
+.day.administrativo { background-color: #eff6ff; border-color: #93c5fd; }
+[data-theme="dark"] .day.administrativo { background-color: rgba(59, 130, 246, 0.1); border-color: rgba(59, 130, 246, 0.3); }
 
-/* Badges de Turnos */
 .turno-badge {
-    font-size: 0.65rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    padding: 3px 8px;
-    border-radius: 9999px;
-    margin-top: 4px;
-    display: inline-block;
+    font-size: 0.65rem; font-weight: 700; text-transform: uppercase;
+    padding: 3px 8px; border-radius: 9999px; margin-top: 4px; display: inline-block;
 }
 
 .t-dia { background-color: #fef3c7; color: #92400e; border: 1px solid #fde68a; }
@@ -99,34 +77,15 @@ body {
 .t-noche { background-color: #e0e7ff; color: #3730a3; border: 1px solid #c7d2fe; }
 [data-theme="dark"] .t-noche { background-color: #312e81; color: #e0e7ff; border-color: #3730a3; }
 
-/* Tabs */
-.tab-btn {
-    background-color: var(--bg-card);
-    color: var(--text-muted);
-    border: 1px solid var(--border-color);
-}
-.tab-btn.active {
-    color: var(--primary);
-    border-color: var(--primary);
-    background-color: rgba(37, 99, 235, 0.05);
-}
+.tab-btn { background-color: var(--bg-card); color: var(--text-muted); border: 1px solid var(--border-color); }
+.tab-btn.active { color: var(--primary); border-color: var(--primary); background-color: rgba(37, 99, 235, 0.05); }
 
-/* Avatar */
 .avatar-circle {
-    width: 48px;
-    height: 48px;
-    border-radius: 50%;
-    background-color: var(--primary);
-    color: white;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-weight: bold;
-    font-size: 1.2rem;
-    border: 2px solid var(--bg-card);
+    width: 48px; height: 48px; border-radius: 50%; background-color: var(--primary);
+    color: white; display: flex; align-items: center; justify-content: center;
+    font-weight: bold; font-size: 1.2rem; border: 2px solid var(--bg-card);
     box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
 
-/* Animaciones */
 .animate-slide-up { animation: slideUp 0.3s ease-out; }
 @keyframes slideUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
