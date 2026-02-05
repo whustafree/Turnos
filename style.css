@@ -1,24 +1,36 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
 
 :root {
-    /* Paleta Modo Claridad */
-    --bg-body: #f3f4f6;       /* Gris muy claro (Humo) */
-    --bg-card: #ffffff;       /* Blanco puro */
-    --text-main: #1f2937;     /* Gris oscuro corporativo */
-    --text-muted: #6b7280;    /* Gris medio */
-    
-    --primary: #2563eb;       /* Azul Corporativo */
-    --primary-hover: #1d4ed8;
-    
-    --success: #10b981;       /* Verde para días trabajados/aprobado */
-    --danger: #ef4444;        /* Rojo suave para descansos/alertas */
-    --warning: #f59e0b;       /* Amarillo para vacaciones */
-    --info: #3b82f6;          /* Azul para administrativos */
-
-    /* Bordes y Sombras */
+    /* Variables Base (Tema Claro por defecto) */
+    --bg-body: #f3f4f6;
+    --bg-card: #ffffff;
+    --text-main: #1f2937;
+    --text-muted: #6b7280;
     --border-color: #e5e7eb;
-    --shadow-card: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
-    --radius: 16px;
+    --header-bg: #ffffff;
+    
+    --primary: #2563eb;
+    
+    /* Calendario */
+    --day-bg: #ffffff;
+    --day-hover: #f9fafb;
+    --day-border: #f3f4f6;
+    --day-today-bg: #eff6ff;
+}
+
+/* TEMA OSCURO */
+[data-theme="dark"] {
+    --bg-body: #0f172a;       /* Slate 900 */
+    --bg-card: #1e293b;       /* Slate 800 */
+    --text-main: #f1f5f9;     /* Slate 100 */
+    --text-muted: #94a3b8;    /* Slate 400 */
+    --border-color: #334155;  /* Slate 700 */
+    --header-bg: #1e293b;
+    
+    --day-bg: #1e293b;
+    --day-hover: #334155;
+    --day-border: #334155;
+    --day-today-bg: rgba(37, 99, 235, 0.15);
 }
 
 body {
@@ -26,38 +38,51 @@ body {
     color: var(--text-main);
     font-family: 'Inter', sans-serif;
     -webkit-tap-highlight-color: transparent;
+    transition: background-color 0.3s ease, color 0.3s ease;
 }
 
 /* Header Fijo */
 .fixed-header {
-    background-color: var(--bg-card);
+    background-color: var(--header-bg);
     border-bottom: 1px solid var(--border-color);
-    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    transition: background-color 0.3s ease;
 }
 
 .card {
     background-color: var(--bg-card);
     border: 1px solid var(--border-color);
-    border-radius: var(--radius);
-    box-shadow: var(--shadow-card);
-    transition: transform 0.2s ease;
+    border-radius: 16px;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+    transition: background-color 0.3s ease, border-color 0.3s ease;
 }
 
-/* Calendario Estilo "Clean" */
+/* Calendario */
 .day {
     min-height: 90px;
-    background-color: #ffffff;
-    border: 1px solid #f3f4f6;
+    background-color: var(--day-bg);
+    border: 1px solid var(--day-border);
     transition: all 0.2s;
 }
-.day:hover { background-color: #f9fafb; border-color: var(--primary); }
-.day.today { border: 2px solid var(--primary); background-color: #eff6ff; }
+.day:hover { background-color: var(--day-hover); border-color: var(--primary); }
+.day.today { border: 2px solid var(--primary); background-color: var(--day-today-bg); }
 
 /* Estados Especiales */
-.day.vacaciones { background-color: #fef3c7; border-color: #fcd34d; } /* Amarillo suave */
-.day.administrativo { background-color: #dbeafe; border-color: #93c5fd; } /* Azul suave */
+.day.vacaciones { 
+    background-color: #fffbeb; border-color: #fcd34d; 
+}
+[data-theme="dark"] .day.vacaciones {
+    background-color: rgba(245, 158, 11, 0.1); border-color: rgba(245, 158, 11, 0.3);
+}
 
-/* Badges de Turnos (Píldoras) */
+.day.administrativo { 
+    background-color: #eff6ff; border-color: #93c5fd; 
+}
+[data-theme="dark"] .day.administrativo {
+    background-color: rgba(59, 130, 246, 0.1); border-color: rgba(59, 130, 246, 0.3);
+}
+
+/* Badges de Turnos */
 .turno-badge {
     font-size: 0.65rem;
     font-weight: 700;
@@ -66,12 +91,25 @@ body {
     border-radius: 9999px;
     margin-top: 4px;
     display: inline-block;
-    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
 }
 
 .t-dia { background-color: #fef3c7; color: #92400e; border: 1px solid #fde68a; }
+[data-theme="dark"] .t-dia { background-color: #78350f; color: #fef3c7; border-color: #92400e; }
+
 .t-noche { background-color: #e0e7ff; color: #3730a3; border: 1px solid #c7d2fe; }
-.t-extra { background-color: #fae8ff; color: #86198f; border: 1px solid #f0abfc; }
+[data-theme="dark"] .t-noche { background-color: #312e81; color: #e0e7ff; border-color: #3730a3; }
+
+/* Tabs */
+.tab-btn {
+    background-color: var(--bg-card);
+    color: var(--text-muted);
+    border: 1px solid var(--border-color);
+}
+.tab-btn.active {
+    color: var(--primary);
+    border-color: var(--primary);
+    background-color: rgba(37, 99, 235, 0.05);
+}
 
 /* Avatar */
 .avatar-circle {
@@ -85,23 +123,10 @@ body {
     justify-content: center;
     font-weight: bold;
     font-size: 1.2rem;
-    border: 2px solid white;
+    border: 2px solid var(--bg-card);
     box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
 
 /* Animaciones */
 .animate-slide-up { animation: slideUp 0.3s ease-out; }
 @keyframes slideUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-
-/* Inputs Modernos */
-input, select, textarea {
-    background-color: #f9fafb !important;
-    border: 1px solid #d1d5db !important;
-    color: #1f2937 !important;
-    border-radius: 10px;
-}
-input:focus, select:focus, textarea:focus {
-    border-color: var(--primary) !important;
-    ring: 2px solid var(--primary);
-    background-color: #fff !important;
-}

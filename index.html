@@ -9,98 +9,101 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="style.css">
 </head>
-<body class="bg-[#f3f4f6] text-gray-800 pb-20">
+<body class="transition-colors duration-300 pb-20">
 
-    <div id="loginScreen" class="fixed inset-0 z-50 flex items-center justify-center bg-white p-6 hidden">
+    <div id="loginScreen" class="fixed inset-0 z-50 flex items-center justify-center bg-white dark:bg-gray-900 p-6 hidden">
         <div class="w-full max-w-sm text-center">
             <div class="mb-8">
                 <i class="fas fa-cube text-6xl text-blue-600 mb-4"></i>
-                <h1 class="text-3xl font-bold text-gray-900">Portal del Colaborador</h1>
-                <p class="text-gray-500 mt-2">Gestiona tus turnos y beneficios</p>
+                <h1 class="text-3xl font-bold text-gray-900 dark:text-white">Portal Turnos</h1>
+                <p class="text-gray-500 dark:text-gray-400 mt-2">Gestiona tus turnos y beneficios</p>
             </div>
-            <input type="email" id="loginEmail" placeholder="Correo corporativo" class="w-full p-4 mb-3 border border-gray-300 rounded-xl bg-gray-50 text-lg">
-            <input type="password" id="loginPass" placeholder="Contraseña" class="w-full p-4 mb-6 border border-gray-300 rounded-xl bg-gray-50 text-lg">
+            <input type="email" id="loginEmail" placeholder="Correo corporativo" class="w-full p-4 mb-3 border border-gray-300 dark:border-gray-700 rounded-xl bg-gray-50 dark:bg-gray-800 text-lg dark:text-white">
+            <input type="password" id="loginPass" placeholder="Contraseña" class="w-full p-4 mb-6 border border-gray-300 dark:border-gray-700 rounded-xl bg-gray-50 dark:bg-gray-800 text-lg dark:text-white">
             <button onclick="login()" class="w-full py-4 bg-blue-600 text-white rounded-xl font-bold text-lg shadow-lg hover:bg-blue-700 transition">INICIAR SESIÓN</button>
-            <button onclick="registro()" class="mt-4 text-blue-600 font-semibold text-sm">Crear cuenta nueva</button>
+            <button onclick="registro()" class="mt-4 text-blue-600 dark:text-blue-400 font-semibold text-sm">Crear cuenta nueva</button>
         </div>
     </div>
 
     <div id="appContent" class="hidden">
         
-        <header class="fixed-header fixed top-0 w-full z-40 px-4 py-3 flex justify-between items-center bg-white">
+        <header class="fixed-header fixed top-0 w-full z-40 px-4 py-3 flex justify-between items-center">
             <div class="flex items-center gap-3">
-                <div class="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-white">
+                <div class="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-white shadow-lg">
                     <i class="fas fa-layer-group"></i>
                 </div>
                 <span class="font-bold text-lg tracking-tight">TurnosApp</span>
             </div>
-            <div class="flex items-center gap-3">
-                <div id="headerAvatar" class="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center text-xs font-bold text-gray-600 cursor-pointer" onclick="abrirPerfil()">US</div>
+            <div class="flex items-center gap-4">
+                <button onclick="toggleTheme()" class="w-8 h-8 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-gray-600 dark:text-yellow-400 transition-colors">
+                    <i id="themeIcon" class="fas fa-moon"></i>
+                </button>
+                <div id="headerAvatar" class="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center text-xs font-bold text-blue-600 dark:text-blue-200 cursor-pointer border border-blue-200 dark:border-blue-700" onclick="abrirPerfil()">US</div>
             </div>
         </header>
 
         <div class="mt-20 container mx-auto px-4 max-w-5xl space-y-6">
 
             <div class="card p-6 flex flex-col md:flex-row items-center md:items-start gap-6 relative overflow-hidden">
-                <div class="absolute top-0 right-0 w-32 h-32 bg-blue-50 rounded-bl-full -z-0"></div>
+                <div class="absolute top-0 right-0 w-32 h-32 bg-blue-50 dark:bg-blue-900/20 rounded-bl-full -z-0 transition-colors"></div>
                 
                 <div class="relative z-10" onclick="abrirPerfil()">
                     <div id="dashboardAvatar" class="avatar-circle w-20 h-20 text-2xl shadow-lg cursor-pointer">US</div>
-                    <div class="absolute bottom-0 right-0 bg-white rounded-full p-1 border border-gray-200 shadow-sm cursor-pointer">
-                        <i class="fas fa-pen text-xs text-gray-500"></i>
+                    <div class="absolute bottom-0 right-0 bg-white dark:bg-gray-700 rounded-full p-1.5 border border-gray-200 dark:border-gray-600 shadow-sm cursor-pointer text-gray-500 dark:text-gray-300">
+                        <i class="fas fa-pen text-xs"></i>
                     </div>
                 </div>
                 
                 <div class="text-center md:text-left flex-1 relative z-10 w-full">
-                    <h2 id="userNombre" class="text-2xl font-bold text-gray-900">Usuario</h2>
-                    <p class="text-gray-500 text-sm mb-3"><span id="userCargo">Cargo no definido</span> en <span id="userEmpresa">Empresa</span></p>
+                    <h2 id="userNombre" class="text-2xl font-bold text-gray-900 dark:text-white">Usuario</h2>
+                    <p class="text-gray-500 dark:text-gray-400 text-sm mb-3"><span id="userCargo">Cargo no definido</span> en <span id="userEmpresa">Empresa</span></p>
                     
                     <div class="grid grid-cols-2 gap-3 mt-4">
-                        <div class="bg-blue-50 p-3 rounded-xl border border-blue-100">
+                        <div class="bg-blue-50 dark:bg-blue-900/30 p-3 rounded-xl border border-blue-100 dark:border-blue-800 transition-colors">
                             <div class="flex justify-between items-center mb-1">
-                                <span class="text-[10px] font-bold text-blue-800 uppercase">ADMINISTRATIVOS</span>
+                                <span class="text-[10px] font-bold text-blue-800 dark:text-blue-300 uppercase">ADMINISTRATIVOS</span>
                                 <i class="fas fa-file-contract text-blue-400 text-xs"></i>
                             </div>
-                            <div class="text-xl font-bold text-blue-700">
-                                <span id="adminUsados">0</span><span class="text-sm text-blue-400 font-normal">/<span id="adminTotal">6</span></span>
+                            <div class="text-xl font-bold text-blue-700 dark:text-blue-200">
+                                <span id="adminUsados">0</span><span class="text-sm text-blue-400 dark:text-blue-500 font-normal">/<span id="adminTotal">6</span></span>
                             </div>
-                            <div class="w-full bg-blue-200 h-1.5 rounded-full overflow-hidden mt-1">
-                                <div id="adminProgress" class="bg-blue-600 h-full" style="width: 0%"></div>
+                            <div class="w-full bg-blue-200 dark:bg-blue-800 h-1.5 rounded-full overflow-hidden mt-1">
+                                <div id="adminProgress" class="bg-blue-600 dark:bg-blue-400 h-full" style="width: 0%"></div>
                             </div>
                         </div>
 
-                        <div class="bg-yellow-50 p-3 rounded-xl border border-yellow-100">
+                        <div class="bg-yellow-50 dark:bg-yellow-900/30 p-3 rounded-xl border border-yellow-100 dark:border-yellow-800 transition-colors">
                             <div class="flex justify-between items-center mb-1">
-                                <span class="text-[10px] font-bold text-yellow-800 uppercase">VACACIONES</span>
+                                <span class="text-[10px] font-bold text-yellow-800 dark:text-yellow-300 uppercase">VACACIONES</span>
                                 <i class="fas fa-umbrella-beach text-yellow-400 text-xs"></i>
                             </div>
-                            <div class="text-xl font-bold text-yellow-700">
-                                <span id="vacacionesUsadas">0</span><span class="text-sm text-yellow-400 font-normal">/<span id="vacacionesTotal">15</span></span>
+                            <div class="text-xl font-bold text-yellow-700 dark:text-yellow-200">
+                                <span id="vacacionesUsadas">0</span><span class="text-sm text-yellow-400 dark:text-yellow-500 font-normal">/<span id="vacacionesTotal">15</span></span>
                             </div>
-                            <div class="w-full bg-yellow-200 h-1.5 rounded-full overflow-hidden mt-1">
-                                <div id="vacacionesProgress" class="bg-yellow-500 h-full" style="width: 0%"></div>
+                            <div class="w-full bg-yellow-200 dark:bg-yellow-800 h-1.5 rounded-full overflow-hidden mt-1">
+                                <div id="vacacionesProgress" class="bg-yellow-500 dark:bg-yellow-400 h-full" style="width: 0%"></div>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <div class="card p-2 flex justify-between items-center bg-white shadow-sm">
-                <button onclick="cambiarMes(-1)" class="w-10 h-10 flex items-center justify-center text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition"><i class="fas fa-chevron-left"></i></button>
-                <div class="text-center">
-                    <h3 id="monthYear" class="text-lg font-bold text-gray-800 uppercase"></h3>
-                    <div class="text-xs text-gray-400 font-medium">Vista Mensual</div>
+            <div class="card p-2 flex justify-between items-center shadow-sm">
+                <button onclick="cambiarMes(-1)" class="w-10 h-10 flex items-center justify-center text-gray-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-lg transition"><i class="fas fa-chevron-left"></i></button>
+                <div class="text-center cursor-pointer" onclick="goToToday()">
+                    <h3 id="monthYear" class="text-lg font-bold text-gray-800 dark:text-white uppercase"></h3>
+                    <div class="text-[10px] text-blue-500 font-bold tracking-widest">HOY</div>
                 </div>
-                <button onclick="cambiarMes(1)" class="w-10 h-10 flex items-center justify-center text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition"><i class="fas fa-chevron-right"></i></button>
+                <button onclick="cambiarMes(1)" class="w-10 h-10 flex items-center justify-center text-gray-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-lg transition"><i class="fas fa-chevron-right"></i></button>
                 
                 <select id="monthSelect" class="hidden" onchange="actualizarCalendario()"></select>
                 <select id="yearSelect" class="hidden" onchange="actualizarCalendario()"></select>
             </div>
 
             <div class="grid grid-cols-3 gap-2">
-                <button onclick="cambiarPestaña('calendario')" class="tab-btn active py-3 bg-white border border-gray-200 rounded-xl font-bold text-sm shadow-sm text-blue-600 ring-2 ring-blue-100">Calendario</button>
-                <button onclick="cambiarPestaña('configuracion')" class="tab-btn py-3 bg-white border border-gray-200 rounded-xl font-bold text-sm shadow-sm text-gray-500">Planificar</button>
-                <button onclick="cambiarPestaña('ausencias')" class="tab-btn py-3 bg-white border border-gray-200 rounded-xl font-bold text-sm shadow-sm text-gray-500">Ausencias</button>
+                <button onclick="cambiarPestaña('calendario')" class="tab-btn active py-3 border rounded-xl font-bold text-sm shadow-sm transition-all">Calendario</button>
+                <button onclick="cambiarPestaña('configuracion')" class="tab-btn py-3 border rounded-xl font-bold text-sm shadow-sm transition-all">Planificar</button>
+                <button onclick="cambiarPestaña('ausencias')" class="tab-btn py-3 border rounded-xl font-bold text-sm shadow-sm transition-all">Ausencias</button>
             </div>
 
             <div id="tab-calendario" class="tab-content block animate-slide-up">
@@ -112,13 +115,13 @@
 
             <div id="tab-configuracion" class="tab-content hidden animate-slide-up">
                 <div class="card p-6">
-                    <h3 class="font-bold text-lg mb-4 text-gray-800">Generador de Turnos 3x3</h3>
-                    <p class="text-sm text-gray-500 mb-4">Selecciona tu secuencia de 3 días de trabajo. El sistema alternará automáticamente 3 trabajo - 3 descanso.</p>
+                    <h3 class="font-bold text-lg mb-4 text-gray-800 dark:text-white">Generador de Turnos 3x3</h3>
+                    <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">Selecciona tu secuencia de 3 días de trabajo. El sistema alternará automáticamente 3 trabajo - 3 descanso.</p>
                     
                     <div class="space-y-4">
                         <div>
-                            <label class="block text-xs font-bold text-gray-500 uppercase mb-2">Selecciona el Ciclo (3 días trabajo)</label>
-                            <select id="ciclo3x3Select" class="w-full p-4 bg-gray-50 border-gray-200 rounded-xl text-gray-700 font-medium">
+                            <label class="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase mb-2">Selecciona el Ciclo</label>
+                            <select id="ciclo3x3Select" class="w-full p-4 bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700 rounded-xl text-gray-700 dark:text-gray-200 font-medium">
                                 <option value="1">1. Solo Día (D-D-D)</option>
                                 <option value="2">2. Solo Noche (N-N-N)</option>
                                 <option value="3">3. Alternando (D-N-D)</option>
@@ -132,8 +135,8 @@
                         </div>
 
                         <div>
-                            <label class="block text-xs font-bold text-gray-500 uppercase mb-2">Comienzo del Ciclo</label>
-                            <input type="date" id="fechaInicio" class="w-full p-4 bg-gray-50 border-gray-200 rounded-xl">
+                            <label class="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase mb-2">Comienzo del Ciclo</label>
+                            <input type="date" id="fechaInicio" class="w-full p-4 bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700 rounded-xl text-gray-700 dark:text-white">
                         </div>
 
                         <button onclick="aplicarCiclo3x3()" class="w-full py-4 bg-blue-600 text-white font-bold rounded-xl shadow-lg hover:bg-blue-700 transition">
@@ -144,25 +147,38 @@
             </div>
 
             <div id="tab-ausencias" class="tab-content hidden animate-slide-up">
-                <div class="card p-6 mb-4 border-l-4 border-yellow-400">
-                    <h3 class="font-bold text-lg mb-2 text-gray-800">Modo Vacaciones</h3>
+                
+                <div class="card p-6 mb-6 border-l-4 border-yellow-400">
+                    <h3 class="font-bold text-lg mb-4 text-gray-800 dark:text-white flex items-center gap-2">
+                        <i class="fas fa-plus-circle text-yellow-500"></i> Registrar Vacaciones
+                    </h3>
                     <div class="grid grid-cols-2 gap-4 mb-4">
                         <div>
-                            <label class="text-xs font-bold text-gray-400">Desde</label>
-                            <input type="date" id="vacStart" class="w-full p-2 mt-1">
+                            <label class="block text-xs font-bold text-gray-400 uppercase mb-1">Desde</label>
+                            <input type="date" id="vacStart" class="w-full p-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-gray-700 dark:text-white">
                         </div>
                         <div>
-                            <label class="text-xs font-bold text-gray-400">Hasta</label>
-                            <input type="date" id="vacEnd" class="w-full p-2 mt-1">
+                            <label class="block text-xs font-bold text-gray-400 uppercase mb-1">Hasta</label>
+                            <input type="date" id="vacEnd" class="w-full p-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-gray-700 dark:text-white">
                         </div>
                     </div>
-                    <div class="flex items-center gap-2 mb-4">
+                    <div class="flex items-center gap-3 mb-4 bg-yellow-50 dark:bg-yellow-900/20 p-3 rounded-lg">
                         <input type="checkbox" id="vacAprobado" class="w-5 h-5 text-blue-600 rounded">
-                        <label for="vacAprobado" class="text-sm font-medium">Marcar como Aprobado</label>
+                        <div>
+                            <label for="vacAprobado" class="text-sm font-bold text-gray-700 dark:text-gray-200">Ya están aprobadas</label>
+                            <p class="text-xs text-gray-500 dark:text-gray-400">Bloqueará los días en el calendario.</p>
+                        </div>
                     </div>
-                    <button onclick="guardarVacaciones()" class="w-full py-3 bg-yellow-500 text-white font-bold rounded-xl hover:bg-yellow-600 shadow-md">
-                        REGISTRAR VACACIONES
+                    <button onclick="guardarVacaciones()" class="w-full py-3 bg-yellow-500 text-white font-bold rounded-xl hover:bg-yellow-600 shadow-md transition">
+                        GUARDAR PERIODO
                     </button>
+                </div>
+
+                <div class="card p-6">
+                    <h3 class="font-bold text-lg mb-4 text-gray-800 dark:text-white">Historial de Ausencias (Año Actual)</h3>
+                    <div id="listaAusencias" class="space-y-2 max-h-80 overflow-y-auto pr-2">
+                        <p class="text-gray-400 text-center py-4">Cargando...</p>
+                    </div>
                 </div>
             </div>
 
@@ -170,36 +186,36 @@
     </div>
 
     <div id="perfilModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 hidden backdrop-blur-sm p-4">
-        <div class="bg-white p-6 rounded-2xl w-full max-w-sm shadow-2xl animate-slide-up overflow-y-auto max-h-[90vh]">
+        <div class="bg-white dark:bg-gray-800 p-6 rounded-2xl w-full max-w-sm shadow-2xl animate-slide-up overflow-y-auto max-h-[90vh]">
             <div class="flex justify-between items-center mb-6">
-                <h3 class="text-xl font-bold text-gray-800">Editar Perfil</h3>
-                <button onclick="cerrarPerfil()" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times text-xl"></i></button>
+                <h3 class="text-xl font-bold text-gray-800 dark:text-white">Editar Perfil</h3>
+                <button onclick="cerrarPerfil()" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"><i class="fas fa-times text-xl"></i></button>
             </div>
             <div class="space-y-4">
                 <div>
                     <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Nombre Completo</label>
-                    <input type="text" id="editNombre" class="w-full p-3 bg-gray-50 border-gray-200 rounded-lg">
+                    <input type="text" id="editNombre" class="w-full p-3 bg-gray-50 dark:bg-gray-700 border-gray-200 dark:border-gray-600 rounded-lg text-gray-800 dark:text-white">
                 </div>
                 <div class="grid grid-cols-2 gap-4">
                     <div>
                         <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Días Admin</label>
-                        <select id="editAdminTotal" class="w-full p-3 bg-gray-50 border-gray-200 rounded-lg">
+                        <select id="editAdminTotal" class="w-full p-3 bg-gray-50 dark:bg-gray-700 border-gray-200 dark:border-gray-600 rounded-lg text-gray-800 dark:text-white">
                             <option value="5">5 días</option>
                             <option value="6">6 días</option>
                         </select>
                     </div>
                     <div>
                         <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Total Vacaciones</label>
-                        <input type="number" id="editVacacionesTotal" class="w-full p-3 bg-gray-50 border-gray-200 rounded-lg" placeholder="Ej: 15">
+                        <input type="number" id="editVacacionesTotal" class="w-full p-3 bg-gray-50 dark:bg-gray-700 border-gray-200 dark:border-gray-600 rounded-lg text-gray-800 dark:text-white" placeholder="Ej: 15">
                     </div>
                 </div>
                 <div>
                     <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Cargo</label>
-                    <input type="text" id="editCargo" class="w-full p-3 bg-gray-50 border-gray-200 rounded-lg">
+                    <input type="text" id="editCargo" class="w-full p-3 bg-gray-50 dark:bg-gray-700 border-gray-200 dark:border-gray-600 rounded-lg text-gray-800 dark:text-white">
                 </div>
                 <div>
                     <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Empresa</label>
-                    <input type="text" id="editEmpresa" class="w-full p-3 bg-gray-50 border-gray-200 rounded-lg">
+                    <input type="text" id="editEmpresa" class="w-full p-3 bg-gray-50 dark:bg-gray-700 border-gray-200 dark:border-gray-600 rounded-lg text-gray-800 dark:text-white">
                 </div>
                 <button onclick="guardarPerfil()" class="w-full py-3 bg-blue-600 text-white font-bold rounded-xl mt-2">GUARDAR CAMBIOS</button>
             </div>
@@ -207,19 +223,19 @@
     </div>
 
     <div id="turnoModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 hidden backdrop-blur-sm p-4">
-        <div class="bg-white p-6 rounded-2xl w-full max-w-xs shadow-2xl animate-slide-up">
-            <h3 class="text-lg font-bold text-center mb-4 text-gray-800">Día <span id="modalDiaNum" class="text-blue-600"></span></h3>
+        <div class="bg-white dark:bg-gray-800 p-6 rounded-2xl w-full max-w-xs shadow-2xl animate-slide-up">
+            <h3 class="text-lg font-bold text-center mb-4 text-gray-800 dark:text-white">Día <span id="modalDiaNum" class="text-blue-600"></span></h3>
             
             <div class="grid grid-cols-2 gap-2 mb-4">
-                <button onclick="agregarTurno('dia')" class="p-3 bg-yellow-50 text-yellow-700 border border-yellow-200 rounded-lg font-bold text-sm hover:bg-yellow-100">DÍA</button>
-                <button onclick="agregarTurno('noche')" class="p-3 bg-indigo-50 text-indigo-700 border border-indigo-200 rounded-lg font-bold text-sm hover:bg-indigo-100">NOCHE</button>
+                <button onclick="agregarTurno('dia')" class="p-3 bg-yellow-50 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400 border border-yellow-200 dark:border-yellow-700 rounded-lg font-bold text-sm hover:bg-yellow-100 dark:hover:bg-yellow-900/50">DÍA</button>
+                <button onclick="agregarTurno('noche')" class="p-3 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-700 rounded-lg font-bold text-sm hover:bg-indigo-100 dark:hover:bg-indigo-900/50">NOCHE</button>
             </div>
             
-            <button onclick="marcarAdministrativo()" class="w-full mb-4 p-3 bg-blue-50 text-blue-700 border border-blue-200 rounded-lg font-bold text-sm flex items-center justify-center gap-2 hover:bg-blue-100">
+            <button onclick="marcarAdministrativo()" class="w-full mb-4 p-3 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 border border-blue-200 dark:border-blue-700 rounded-lg font-bold text-sm flex items-center justify-center gap-2 hover:bg-blue-100 dark:hover:bg-blue-900/50">
                 <i class="fas fa-file-contract"></i> DÍA ADMINISTRATIVO
             </button>
 
-            <button onclick="quitarTurno()" class="w-full p-3 text-red-500 hover:bg-red-50 rounded-lg font-bold text-sm">Borrar Eventos</button>
+            <button onclick="quitarTurno()" class="w-full p-3 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg font-bold text-sm">Borrar Eventos</button>
             <button onclick="document.getElementById('turnoModal').classList.add('hidden')" class="w-full mt-2 text-gray-400 text-sm">Cancelar</button>
         </div>
     </div>
