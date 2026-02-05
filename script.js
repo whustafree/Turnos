@@ -1,30 +1,75 @@
-// Configuración de Supabase
-const SUPABASE_URL = 'https://kjhrxdnwuwdmktdwuhdi.supabase.co';
-const SUPABASE_KEY = 'sb_publishable_0nvqhjvJiytEFeif99jVsg_eiqOtXh9';
-const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-
 let turnos = {};
 let diaSeleccionado = null;
 
 // --- GESTIÓN DE SESIÓN ---
 async function revisarSesion() {
-    const { data: { session } } = await supabaseClient.auth.getSession();
+    const { data: { session } } = await window.supabase.auth.getSession();
     const loginScreen = document.getElementById('loginScreen');
     const appContent = document.getElementById('appContent');
 
     if (session) {
         loginScreen.classList.add('hidden');
         appContent.classList.remove('hidden');
-        await cargarDatos(session.user.id);
+        await cargarDatosSupabase(session.user.id);
     } else {
         loginScreen.classList.remove('hidden');
         appContent.classList.add('hidden');
     }
 }
 
-// Cargar datos desde la nube
-async function cargarDatos(userId) {
-    const { data, error } = await supabaseClient
+// Escuchar cambios de estado
+window.supabase.auth.onAuthStateChange((event, session) => {
+    revisarSesion();
+});
+
+window.login = async () => {
+    const email = document.getElementById('loginEmail').value.trim();
+    const password = document.getElementById('loginPass').value.trim();
+
+    if (!email || !password) {
+        alert("Por favor, ingrese correo y contraseña");
+        return;
+    }
+
+    const { error } = await window.supabase.auth.signInWithPassword({ email, password });
+    if (error) alert("Error al entrar: " + error.message);
+};
+
+window.registro = async () => {
+    const email = document.getElementById('loginEmail').value.trim();
+    const password = document.getElementById('loginPass').value.trim();
+
+    if (!email || !password) {
+        alert("Complete ambos campos para registrarse");
+        return;
+    }
+
+    const { error } = await window.supabase.auth.signUp({ email, password });
+    if (error) alert("Error al registrar: " + error.message);
+    else alert("¡Usuario creado! Ya puedes iniciar sesión.");
+};
+
+window.cerrarSesion = async () => {
+    await window.supabase.auth.signOut();
+};
+
+// --- SINCRONIZACIÓN DE DATOS ---
+async function guardarDatosSupabase() {
+    const { data: { user } } = await window.supabase.auth.getUser();
+    if (user) {
+        const { error } = await window.supabase.from('usuarios_turnos')
+            .upsert({ 
+                user_id: user.id, 
+                datos_turnos: turnos,
+                updated_at: new Date() 
+            }, { onConflict: 'user_id' });
+        
+        if (error) console.error("Error al sincronizar:", error);
+    }
+}
+
+async function cargarDatosSupabase(userId) {
+    const { data, error } = await window.supabase
         .from('usuarios_turnos')
         .select('datos_turnos')
         .eq('user_id', userId)
@@ -32,24 +77,12 @@ async function cargarDatos(userId) {
 
     if (data) {
         turnos = data.datos_turnos || {};
-        actualizarCalendario();
+        window.actualizarCalendario();
     }
 }
 
-// Guardar datos en la nube
-async function guardarDatos() {
-    const { data: { user } } = await supabaseClient.auth.getUser();
-    if (user) {
-        await supabaseClient.from('usuarios_turnos').upsert({ 
-            user_id: user.id, 
-            datos_turnos: turnos,
-            updated_at: new Date() 
-        }, { onConflict: 'user_id' });
-    }
-}
-
-// --- CALENDARIO ---
-function actualizarCalendario() {
+// --- LÓGICA DEL CALENDARIO ---
+window.actualizarCalendario = () => {
     const año = document.getElementById('yearSelect').value;
     const mes = document.getElementById('monthSelect').value;
     const grid = document.getElementById('calendar');
@@ -63,42 +96,27 @@ function actualizarCalendario() {
 
     for(let d=1; d<=diasMes; d++) {
         const div = document.createElement('div');
-        div.className = 'day card p-2 text-center cursor-pointer border border-gray-700 rounded';
-        div.innerHTML = `<span class="font-bold">${d}</span>`;
+        div.className = 'day card p-2 text-center cursor-pointer border border-gray-700 rounded hover:bg-gray-800';
+        div.innerHTML = `<span class="font-bold text-sm">${d}</span>`;
         
         const data = turnos[año]?.[mes]?.[d];
         if(data && data.turnos) {
             data.turnos.forEach(t => {
                 const badge = document.createElement('div');
-                badge.className = `turno ${t} text-[9px] rounded mt-1 text-white p-1 uppercase`;
+                badge.className = `turno ${t} text-[9px] rounded mt-1 text-white p-1 uppercase font-bold`;
                 badge.textContent = t.replace('-', ' ');
                 div.appendChild(badge);
             });
         }
-        div.onclick = () => { diaSeleccionado = d; document.getElementById('turnoModal').classList.add('active'); };
+        div.onclick = () => { 
+            diaSeleccionado = d; 
+            document.getElementById('turnoModal').classList.add('active'); 
+        };
         grid.appendChild(div);
     }
-}
+};
 
-// --- EVENTOS DE BOTONES ---
-document.getElementById('btnLogin')?.addEventListener('click', async () => {
-    const email = document.getElementById('loginEmail').value;
-    const password = document.getElementById('loginPass').value;
-    const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
-    if (error) alert(error.message);
-});
-
-document.getElementById('btnRegistro')?.addEventListener('click', async () => {
-    const email = document.getElementById('loginEmail').value;
-    const password = document.getElementById('loginPass').value;
-    const { error } = await supabaseClient.auth.signUp({ email, password });
-    if (error) alert(error.message);
-    else alert("¡Confirma tu correo!");
-});
-
-document.getElementById('btnLogout')?.addEventListener('click', () => supabaseClient.auth.signOut());
-
-document.getElementById('btnAgregarTurno')?.addEventListener('click', async () => {
+window.agregarTurno = async () => {
     const año = document.getElementById('yearSelect').value;
     const mes = document.getElementById('monthSelect').value;
     const tipo = document.getElementById('turnoSelect').value;
@@ -109,17 +127,17 @@ document.getElementById('btnAgregarTurno')?.addEventListener('click', async () =
 
     if(!turnos[año][mes][diaSeleccionado].turnos.includes(tipo)) {
         turnos[año][mes][diaSeleccionado].turnos.push(tipo);
-        actualizarCalendario();
-        await guardarDatos();
+        window.actualizarCalendario();
+        await guardarDatosSupabase();
     }
-    document.getElementById('turnoModal').classList.remove('active');
-});
+    window.cerrarModal();
+};
 
-document.getElementById('btnCerrarModal')?.addEventListener('click', () => {
+window.cerrarModal = () => {
     document.getElementById('turnoModal').classList.remove('active');
-});
+};
 
-// Inicialización
+// Inicialización de selectores
 document.addEventListener('DOMContentLoaded', () => {
     const ySel = document.getElementById('yearSelect');
     const mSel = document.getElementById('monthSelect');
@@ -137,41 +155,3 @@ document.addEventListener('DOMContentLoaded', () => {
     
     revisarSesion();
 });
-
-supabaseClient.auth.onAuthStateChange(() => revisarSesion());
-// Añade esto para que los botones del HTML funcionen
-window.login = async () => {
-    const email = document.getElementById('loginEmail').value;
-    const password = document.getElementById('loginPass').value;
-    const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
-    if (error) alert(error.message);
-};
-
-window.registro = async () => {
-    const email = document.getElementById('loginEmail').value;
-    const password = document.getElementById('loginPass').value;
-    const { error } = await supabaseClient.auth.signUp({ email, password });
-    if (error) alert(error.message);
-    else alert("¡Confirma tu correo!");
-};
-
-window.cerrarSesion = () => supabaseClient.auth.signOut();
-
-window.agregarTurno = async () => {
-    const año = document.getElementById('yearSelect').value;
-    const mes = document.getElementById('monthSelect').value;
-    const tipo = document.getElementById('turnoSelect').value;
-
-    if(!turnos[año]) turnos[año] = {};
-    if(!turnos[año][mes]) turnos[año][mes] = {};
-    if(!turnos[año][mes][diaSeleccionado]) turnos[año][mes][diaSeleccionado] = { turnos: [] };
-
-    if(!turnos[año][mes][diaSeleccionado].turnos.includes(tipo)) {
-        turnos[año][mes][diaSeleccionado].turnos.push(tipo);
-        actualizarCalendario();
-        await guardarDatos();
-    }
-    document.getElementById('turnoModal').classList.remove('active');
-};
-
-window.actualizarCalendario = actualizarCalendario; // Si lo llamas desde onchange en el HTML
