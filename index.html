@@ -3,152 +3,41 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <meta name="theme-color" content="#000000">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="manifest" href="manifest.json">
     <title>Calendario de Turnos Chile</title>
-    
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="style.css">
 </head>
-<body class="dark-mode transition-colors duration-300" id="body">
-    <div class="container mx-auto px-4 py-6 max-w-6xl">
-        <div class="flex flex-col md:flex-row justify-between items-center mb-4 md:mb-6">
-            <h1 class="text-2xl md:text-3xl font-bold mb-3 md:mb-0 text-center md:text-left brand-gradient">
-                <i class="fas fa-calendar-alt mr-2"></i>Calendario de Turnos
-            </h1>
-            <div class="flex items-center space-x-2 md:space-x-4">
-                <button onclick="cambiarTema()" class="btn-primary px-3 py-1 md:px-4 md:py-2 rounded-lg flex items-center text-sm md:text-base">
-                    <i class="fas fa-moon mr-1 md:mr-2"></i><span class="hidden sm:inline">Cambiar Tema</span>
-                </button>
-                <select id="userSwitcher" class="rounded-lg border border-gray-300 dark:border-gray-700 p-2 text-sm md:text-base bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"></select>
-                <span id="userSwitcherColor" class="inline-block w-4 h-4 rounded-full border border-gray-500"></span>
-            </div>
+<body class="dark-mode" id="body">
+    <div id="loginScreen" class="fixed inset-0 z-50 flex items-center justify-center bg-black p-4 hidden">
+        <div class="card p-6 w-full max-w-sm">
+            <h2 class="text-2xl font-bold mb-4 text-center" style="color: var(--primary)">Bienvenido</h2>
+            <input type="email" id="loginEmail" placeholder="Correo electrónico" class="w-full p-2 mb-3 rounded bg-gray-800 border border-gray-700 text-white">
+            <input type="password" id="loginPass" placeholder="Contraseña" class="w-full p-2 mb-4 rounded bg-gray-800 border border-gray-700 text-white">
+            <button onclick="login()" class="btn-primary w-full py-2 rounded mb-2">Entrar</button>
+            <button onclick="registro()" class="text-sm text-gray-400 w-full text-center">¿No tienes cuenta? Regístrate aquí</button>
         </div>
+    </div>
 
-        <div class="card p-3 md:p-4 mb-4 md:mb-6">
-            <div class="flex flex-col sm:flex-row justify-between items-center gap-2">
-                <div class="text-lg md:text-xl font-bold text-primary dark:text-primary-light text-center sm:text-left" id="monthYear"></div>
-                <div id="controlsBar" class="w-full sm:w-auto">
-                    <div id="controlsGroup" class="controls-group">
-                        <button aria-label="Año anterior" onclick="cambiarAño(-1)" class="btn-secondary px-2 py-2 rounded"><i class="fas fa-angle-double-left"></i></button>
-                        <button aria-label="Mes anterior" onclick="cambiarMes(-1)" class="btn-secondary px-2 py-2 rounded"><i class="fas fa-chevron-left"></i></button>
-                        <button aria-label="Mes siguiente" onclick="cambiarMes(1)" class="btn-secondary px-2 py-2 rounded"><i class="fas fa-chevron-right"></i></button>
-                        <button aria-label="Año siguiente" onclick="cambiarAño(1)" class="btn-secondary px-2 py-2 rounded"><i class="fas fa-angle-double-right"></i></button>
-                        <button aria-label="Ir a hoy" onclick="goToToday()" class="btn-secondary px-2 py-2 rounded"><i class="fas fa-dot-circle"></i></button>
-                        <button aria-label="Ir al próximo turno" onclick="irAlProximoTurno()" class="btn-secondary px-2 py-2 rounded"><i class="fas fa-location-arrow"></i></button>
-                        <button aria-label="Ir al próximo libre" onclick="irAlProximoLibre()" class="btn-secondary px-2 py-2 rounded"><i class="fas fa-walking"></i></button>
-                        <button aria-label="Modo compacto" onclick="toggleCompacto()" class="btn-secondary px-2 py-2 rounded"><i class="fas fa-compress"></i></button>
-                        <button aria-label="Selector de mes" onclick="toggleMonthGrid()" class="btn-secondary px-2 py-2 rounded"><i class="fas fa-th"></i></button>
-                        <button aria-label="Mostrar u ocultar vista anual" onclick="toggleAnnualView()" class="btn-secondary px-2 py-2 rounded"><i id="annualToggleIcon" class="fas fa-eye"></i></button>
-                    </div>
-                    <div id="controlsSelects" class="controls-selects">
-                        <select id="monthSelect" onchange="actualizarCalendario()" class="rounded-lg border border-gray-300 dark:border-gray-700 p-2 text-sm md:text-base bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100">
-                            <option value="0">Enero</option><option value="1">Febrero</option><option value="2">Marzo</option><option value="3">Abril</option><option value="4">Mayo</option><option value="5">Junio</option><option value="6">Julio</option><option value="7">Agosto</option><option value="8">Septiembre</option><option value="9">Octubre</option><option value="10">Noviembre</option><option value="11">Diciembre</option>
-                        </select>
-                        <select id="yearSelect" onchange="actualizarCalendario()" class="rounded-lg border border-gray-300 dark:border-gray-700 p-2 text-sm md:text-base bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"></select>
-                    </div>
-                </div>
-            </div>
-            <div id="monthGrid" class="mt-2 hidden">
-                <div class="grid grid-cols-3 sm:grid-cols-6 gap-2">
-                    <button class="btn-secondary py-1 rounded" onclick="seleccionarMes(0)">Ene</button>
-                    <button class="btn-secondary py-1 rounded" onclick="seleccionarMes(1)">Feb</button>
-                    <button class="btn-secondary py-1 rounded" onclick="seleccionarMes(2)">Mar</button>
-                    <button class="btn-secondary py-1 rounded" onclick="seleccionarMes(3)">Abr</button>
-                    <button class="btn-secondary py-1 rounded" onclick="seleccionarMes(4)">May</button>
-                    <button class="btn-secondary py-1 rounded" onclick="seleccionarMes(5)">Jun</button>
-                    <button class="btn-secondary py-1 rounded" onclick="seleccionarMes(6)">Jul</button>
-                    <button class="btn-secondary py-1 rounded" onclick="seleccionarMes(7)">Ago</button>
-                    <button class="btn-secondary py-1 rounded" onclick="seleccionarMes(8)">Sep</button>
-                    <button class="btn-secondary py-1 rounded" onclick="seleccionarMes(9)">Oct</button>
-                    <button class="btn-secondary py-1 rounded" onclick="seleccionarMes(10)">Nov</button>
-                    <button class="btn-secondary py-1 rounded" onclick="seleccionarMes(11)">Dic</button>
-                </div>
-            </div>
-        </div>
-
-        <div class="card p-4 mb-6">
-            <div class="tabs">
-                <div class="tab active" onclick="cambiarPestaña('calendario')"><i class="fas fa-calendar"></i> <span>Calendario</span></div>
-                <div class="tab" onclick="cambiarPestaña('estadisticas')"><i class="fas fa-chart-bar"></i> <span>Estadísticas</span></div>
-                <div class="tab" onclick="cambiarPestaña('herramientas')"><i class="fas fa-tools"></i> <span>Herramientas</span></div>
-                <div class="tab" onclick="cambiarPestaña('configuracion')"><i class="fas fa-cog"></i> <span>Config</span></div>
+    <div id="appContent" class="hidden">
+        <div class="container mx-auto px-4 py-6 max-w-6xl">
+            <div class="flex justify-between items-center mb-6">
+                <h1 class="text-2xl font-bold brand-gradient">Turnos Chile</h1>
+                <button onclick="cerrarSesion()" class="text-sm bg-red-600 px-3 py-1 rounded text-white">Cerrar Sesión</button>
             </div>
             
-            <div id="tab-calendario" class="tab-content active">
-                <div class="md:grid md:grid-cols-3 gap-3">
-                    <div id="monthlyContainer" class="md:col-span-2 monthly-anim">
-                        <div class="card p-3 mb-3">
-                            <div class="legend">
-                                <div class="legend-item legend-dia"><i class="fas fa-sun"></i><span>Día</span></div>
-                                <div class="legend-item legend-noche"><i class="fas fa-moon"></i><span>Noche</span></div>
-                                <div class="legend-item legend-extra-dia"><i class="fas fa-plus"></i><span>Extra Día</span></div>
-                                <div class="legend-item legend-extra-noche"><i class="fas fa-plus"></i><span>Extra Noche</span></div>
-                            </div>
-                        </div>
-                        <div id="progressBlock" class="card p-3 mb-3"></div>
-                        <div id="calendar" class="grid grid-cols-7 gap-2 md:gap-3"></div>
-                    </div>
-                    <div id="annualView" class="card p-3 annual-anim"></div>
-                </div>
-            </div>
-
-            <div id="tab-estadisticas" class="tab-content">
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div class="card p-4">
-                        <h3 class="font-semibold text-lg mb-3"><i class="fas fa-chart-pie mr-2"></i>Resumen del Mes</h3>
-                        <div class="grid grid-cols-2 gap-2">
-                            <div class="bg-blue-100 dark:bg-blue-900 p-3 rounded-lg">
-                                <div class="text-sm text-gray-600 dark:text-gray-300">Trabajados</div>
-                                <div class="text-2xl font-bold text-blue-600 dark:text-blue-300" id="diasTrabajados">0</div>
-                            </div>
-                            <div class="bg-green-100 dark:bg-green-900 p-3 rounded-lg">
-                                <div class="text-sm text-gray-600 dark:text-gray-300">Libres</div>
-                                <div class="text-2xl font-bold text-green-600 dark:text-green-300" id="diasLibres">0</div>
-                            </div>
-                            <div class="bg-yellow-100 dark:bg-yellow-900 p-3 rounded-lg">
-                                <div class="text-sm text-gray-600 dark:text-gray-300">H. Normales</div>
-                                <div class="text-2xl font-bold text-yellow-600 dark:text-yellow-300" id="horasNormales">0</div>
-                            </div>
-                            <div class="bg-purple-100 dark:bg-purple-900 p-3 rounded-lg">
-                                <div class="text-sm text-gray-600 dark:text-gray-300">H. Extras</div>
-                                <div class="text-2xl font-bold text-purple-600 dark:text-purple-300" id="horasExtras">0</div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="card p-4">
-                        <h3 class="font-semibold text-lg mb-3"><i class="fas fa-list-ul mr-2"></i>Detalle</h3>
-                        <textarea id="diasNormales" rows="4" class="w-full p-2 mb-2 rounded bg-gray-800 text-white border border-gray-700" readonly></textarea>
-                        <textarea id="diasExtras" rows="4" class="w-full p-2 rounded bg-gray-800 text-white border border-gray-700" readonly></textarea>
+            <div class="card p-4 mb-6">
+                <div class="flex justify-between items-center">
+                    <div id="monthYear" class="text-xl font-bold"></div>
+                    <div class="flex space-x-2">
+                        <select id="monthSelect" onchange="actualizarCalendario()" class="rounded bg-gray-800 p-1"></select>
+                        <select id="yearSelect" onchange="actualizarCalendario()" class="rounded bg-gray-800 p-1"></select>
                     </div>
                 </div>
             </div>
 
-            <div id="tab-herramientas" class="tab-content">
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    <button onclick="exportarAPDF()" class="btn-primary py-2 rounded"><i class="fas fa-file-pdf mr-2"></i>Exportar PDF</button>
-                    <button onclick="descargarUnificadoJPG()" class="btn-secondary py-2 rounded"><i class="fas fa-download mr-2"></i>Descargar JPG</button>
-                    <button onclick="limpiarMes()" class="bg-red-600 py-2 rounded text-white">Limpiar Mes</button>
-                </div>
-                <div id="unificadoPreview" class="mt-4 overflow-auto">
-                    <canvas id="unificadoCanvas" style="max-width:100%; height:auto; border:1px solid #333; border-radius:6px"></canvas>
-                </div>
-            </div>
-
-            <div id="tab-configuracion" class="tab-content">
-                <div class="card p-4">
-                    <h3 class="font-semibold text-lg mb-3">Configurar Patrón</h3>
-                    <select id="patronSelect" onchange="toggleCustomPattern()" class="w-full p-2 mb-3 rounded bg-gray-800 text-white border border-gray-700">
-                        <option value="3x3" selected>3x3 (3 trabajo, 3 descanso)</option>
-                        <option value="4x4">4x4</option>
-                        <option value="5x2">5x2</option>
-                        <option value="custom">Personalizado</option>
-                    </select>
-                    <button onclick="completarCalendario()" class="btn-primary w-full py-2 rounded">Aplicar Patrón</button>
-                </div>
-            </div>
+            <div id="calendar" class="grid grid-cols-7 gap-2"></div>
         </div>
     </div>
 
@@ -161,31 +50,35 @@
                 <option value="extra-dia">Extra Día</option>
                 <option value="extra-noche">Extra Noche</option>
             </select>
-            <textarea id="nota" placeholder="Nota..." class="w-full p-2 mb-3 rounded bg-gray-800 text-white"></textarea>
             <div class="flex justify-between">
                 <button onclick="agregarTurno()" class="btn-primary px-4 py-2 rounded">Agregar</button>
-                <button onclick="quitarTurno()" class="btn-secondary px-4 py-2 rounded">Quitar</button>
                 <button onclick="cerrarModal()" class="bg-gray-700 px-4 py-2 rounded text-white">Cerrar</button>
             </div>
         </div>
     </div>
 
-    <div class="mobile-nav fixed bottom-0 left-0 right-0 bg-black shadow-lg z-10 md:hidden">
-        <div class="flex justify-around p-2">
-            <div class="mobile-nav-item active" onclick="cambiarPestaña('calendario')"><i class="fas fa-calendar"></i><span>Cal</span></div>
-            <div class="mobile-nav-item" onclick="cambiarPestaña('estadisticas')"><i class="fas fa-chart-bar"></i><span>Est</span></div>
-            <div class="mobile-nav-item" onclick="cambiarPestaña('herramientas')"><i class="fas fa-tools"></i><span>Herr</span></div>
-            <div class="mobile-nav-item" onclick="cambiarPestaña('configuracion')"><i class="fas fa-cog"></i><span>Conf</span></div>
-        </div>
-    </div>
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getAuth } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+        import { getFirestore } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyBXT6NLK2ZbdEjFyVsHT_MUPC20txz2sfM",
+            authDomain: "turnos-chile.firebaseapp.com",
+            projectId: "turnos-chile",
+            storageBucket: "turnos-chile.firebasestorage.app",
+            messagingSenderId: "545791087800",
+            appId: "1:545791087800:web:14f26c7e5f83abcd3e904d"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        window.auth = getAuth(app);
+        window.db = getFirestore(app);
+
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('sw.js');
+        }
+    </script>
     <script src="script.js"></script>
-    <link rel="manifest" href="manifest.json">
-<script>
-  if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('sw.js');
-  }
-</script>
 </body>
 </html>
