@@ -13,7 +13,7 @@ let perfil = {
 let diaSeleccionado = null;
 let feriadosCache = {};
 
-// --- CICLOS DEFINIDOS AL INICIO (CRUCIAL PARA QUE FUNCIONE LA RESTAURACIÓN) ---
+// --- CICLOS DEFINIDOS AL INICIO ---
 const CICLOS_3X3 = {
     '1': ['dia', 'dia', 'dia'], '2': ['noche', 'noche', 'noche'], '3': ['dia', 'noche', 'dia'],
     '4': ['noche', 'noche', 'dia'], '5': ['noche', 'dia', 'noche'], '6': ['dia', 'noche', 'noche'],
@@ -42,7 +42,7 @@ function actualizarIconoTema() {
     }
 }
 
-// --- 2. LÓGICA DE FERIADOS (CHILE) ---
+// --- 2. LÓGICA DE FERIADOS ---
 const FERIADOS = {
     'Año Nuevo': y => new Date(y, 0, 1),
     'Viernes Santo': y => calcularSemanaSanta(y, -2),
@@ -177,10 +177,8 @@ function updateDashboard() {
 }
 
 // --- 5. GESTIÓN AUSENCIAS Y RESTAURACIÓN ---
-
-// Función para calcular qué turno tocaba en una fecha según el patrón guardado
 function calcularTurnoOriginal(fecha) {
-    if (!perfil.patronActual) return null; // No hay patrón guardado
+    if (!perfil.patronActual) return null;
 
     const { fechaInicio, cicloId } = perfil.patronActual;
     const patronTrabajo = CICLOS_3X3[cicloId];
@@ -188,15 +186,15 @@ function calcularTurnoOriginal(fecha) {
     const [iy, im, id] = fechaInicio.split('-').map(Number);
     const startDate = new Date(iy, im - 1, id);
     
-    if (fecha < startDate) return null; // Fecha anterior al inicio del patrón
+    if (fecha < startDate) return null;
 
     const diffDays = Math.floor((fecha - startDate) / (1000 * 60 * 60 * 24));
     let pos = diffDays % 6; if(pos < 0) pos += 6;
 
     if (pos < 3) {
-        return patronTrabajo[pos]; // Retorna 'dia' o 'noche'
+        return patronTrabajo[pos];
     } else {
-        return null; // Es descanso
+        return null;
     }
 }
 
@@ -291,21 +289,17 @@ window.eliminarPeriodo = async (inicioStr, finStr) => {
         const cm = loop.getMonth();
         const cd = loop.getDate();
         
-        // Calcular qué turno debería haber aquí
         const turnoOriginal = calcularTurnoOriginal(loop);
 
         if (turnoOriginal) {
-            // Si le toca turno, lo restauramos
             if(!turnos[cy]) turnos[cy] = {};
             if(!turnos[cy][cm]) turnos[cy][cm] = {};
             turnos[cy][cm][cd] = { turnos: [turnoOriginal], tipo: 'turno' };
         } else {
-            // Si le toca descanso, borramos la entrada
             if (turnos[cy]?.[cm]?.[cd]) delete turnos[cy][cm][cd];
         }
         loop.setDate(loop.getDate() + 1);
     }
-    
     await saveData();
 };
 
@@ -320,7 +314,6 @@ window.generarCartaVacaciones = () => {
     const start = new Date(sy, sm-1, sd);
     const end = new Date(ey, em-1, ed);
 
-    // Contar días hábiles
     let habiles = 0;
     let loop = new Date(start);
     while(loop <= end) {
@@ -341,7 +334,7 @@ ${perfil.nombre || 'Nombre Colaborador'}
 ${perfil.cargo || ''}`;
 
     navigator.clipboard.writeText(texto).then(() => {
-        alert("¡Carta copiada al portapapeles! Lista para pegar en correo o WhatsApp.");
+        alert("¡Carta copiada al portapapeles!");
     });
 };
 
@@ -524,7 +517,6 @@ window.aplicarCiclo3x3 = async () => {
     const fechaInput = document.getElementById('fechaInicio').value;
     if (!fechaInput) return alert("Selecciona fecha inicio");
     
-    // GUARDAR EL PATRÓN EN EL PERFIL PARA FUTURAS RESTAURACIONES
     perfil.patronActual = { fechaInicio: fechaInput, cicloId: cicloId };
     
     const [iy, im, id] = fechaInput.split('-').map(Number);
