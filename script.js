@@ -1,3 +1,67 @@
+// --- SISTEMA DE LOGS INTERNOS (Para ver errores en pantalla) ---
+function initInternalConsole() {
+    const output = document.getElementById('internalConsoleOutput');
+    const statusMsg = document.getElementById('loginStatus');
+    if(!output) return;
+
+    function logToScreen(msg, type) {
+        const div = document.createElement('div');
+        div.style.color = type === 'error' ? '#ff6b6b' : (type === 'warn' ? '#fcd34d' : '#4ade80');
+        div.style.marginBottom = '2px';
+        div.innerText = `[${new Date().toLocaleTimeString()}] ${msg}`;
+        output.appendChild(div);
+        output.scrollTop = output.scrollHeight; // Auto-scroll
+        
+        // También mostrar error crítico en el login si estamos ahí
+        if(type === 'error' && statusMsg) {
+            statusMsg.innerText = "Error Interno: " + msg;
+        }
+    }
+
+    // Sobreescribir logs nativos
+    const originalLog = console.log;
+    const originalError = console.error;
+    const originalWarn = console.warn;
+
+    console.log = function(...args) {
+        originalLog.apply(console, args);
+        // Convertir objetos a texto simple para mostrar
+        const msg = args.map(a => (typeof a === 'object' ? JSON.stringify(a) : a)).join(' ');
+        logToScreen(msg, 'log');
+    };
+
+    console.error = function(...args) {
+        originalError.apply(console, args);
+        const msg = args.map(a => (typeof a === 'object' ? JSON.stringify(a) : a)).join(' ');
+        logToScreen(msg, 'error');
+        // Asegurar que la consola se abra si hay error
+        document.getElementById('internalDebug').classList.remove('hidden');
+    };
+
+    console.warn = function(...args) {
+        originalWarn.apply(console, args);
+        const msg = args.map(a => (typeof a === 'object' ? JSON.stringify(a) : a)).join(' ');
+        logToScreen(msg, 'warn');
+    };
+
+    // Capturar errores globales no controlados
+    window.onerror = function(msg, url, line) {
+        logToScreen(`Global Error: ${msg} (Line: ${line})`, 'error');
+        return false;
+    };
+    
+    // Capturar Promesas rotas (ej. errores de Supabase silenciosos)
+    window.onunhandledrejection = function(event) {
+        logToScreen(`Unhandled Promise: ${event.reason}`, 'error');
+    };
+    
+    console.log("Sistema de Log Interno Iniciado...");
+}
+
+// Iniciar log inmediatamente
+initInternalConsole();
+
+// --- VARIABLES GLOBALES ---
 let turnos = {};
 let perfil = {
     nombre: 'Usuario',
@@ -49,7 +113,7 @@ const FERIADOS = {
     'Sábado Santo': y => calcularSemanaSanta(y, -1),
     'Día del Trabajo': y => new Date(y, 4, 1),
     'Glorias Navales': y => new Date(y, 4, 21),
-    'San Pedro y Pablo': y => new Date(y, 5, 29), // Fijado para simplificación
+    'San Pedro y Pablo': y => new Date(y, 5, 29), 
     'Virgen del Carmen': y => new Date(y, 6, 16),
     'Asunción': y => new Date(y, 7, 15),
     'Fiestas Patrias': y => new Date(y, 8, 18),
@@ -81,62 +145,100 @@ function esDiaHabil(fecha) {
 }
 
 // --- SUPABASE & DATA ---
+// MODIFICADO: Versión segura de checkSession
 async function checkSession() {
-    // Usamos window.supabaseClient en lugar de window.supabase
-    const { data: { session } } = await window.supabaseClient.auth.getSession();
-    if (session) {
-        document.getElementById('loginScreen').classList.add('hidden');
-        document.getElementById('appContent').classList.remove('hidden');
+    console.log("Verificando sesión...");
+    try {
+        const { data: { session }, error } = await window.supabaseClient.auth.getSession();
         
-        // Cargar datos
-        await loadData(session.user.id);
-    } else {
+        if (error) throw error;
+
+        if (session) {
+            console.log("Sesión activa encontrada para:", session.user.email);
+            document.getElementById('loginScreen').classList.add('hidden');
+            document.getElementById('appContent').classList.remove('hidden');
+            
+            await loadData(session.user.id);
+        } else {
+            console.log("No hay sesión activa.");
+            document.getElementById('loginScreen').classList.remove('hidden');
+            document.getElementById('appContent').classList.add('hidden');
+        }
+    } catch (e) {
+        console.error("Error crítico verificando sesión:", e);
+        // En caso de fallo, mostrar Login para no quedar en pantalla negra
         document.getElementById('loginScreen').classList.remove('hidden');
+        document.getElementById('appContent').classList.add('hidden');
     }
 }
 
-window.supabaseClient.auth.onAuthStateChange(() => checkSession());
+// Escuchar cambios de sesión
+window.supabaseClient.auth.onAuthStateChange((event, session) => {
+    console.log("Evento Auth:", event);
+    if(event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+        checkSession();
+    } else if (event === 'SIGNED_OUT') {
+        window.location.reload();
+    }
+});
 
 window.login = async () => {
     const email = document.getElementById('loginEmail').value.trim();
     const pass = document.getElementById('loginPass').value.trim();
+    console.log("Intentando login con:", email);
     const { error } = await window.supabaseClient.auth.signInWithPassword({ email, password: pass });
-    if (error) alert(error.message);
+    if (error) {
+        console.error("Error Login:", error.message);
+        alert("Error: " + error.message);
+    } else {
+        console.log("Login exitoso");
+    }
 };
 
 window.registro = async () => {
     const email = document.getElementById('loginEmail').value.trim();
     const pass = document.getElementById('loginPass').value.trim();
     const { error } = await window.supabaseClient.auth.signUp({ email, password: pass });
-    if (error) alert(error.message); else alert("Cuenta creada.");
+    if (error) {
+        console.error("Error Registro:", error.message);
+        alert(error.message);
+    } else {
+        console.log("Registro iniciado, revisar correo");
+        alert("Cuenta creada.");
+    }
 };
 
 window.cerrarSesion = () => {
+    console.log("Cerrando sesión...");
     window.supabaseClient.auth.signOut();
-    localStorage.removeItem('turnos_local_data'); // Limpiar datos locales al salir
+    localStorage.removeItem('turnos_local_data'); 
     location.reload();
 };
 
 // --- SISTEMA HÍBRIDO DE GUARDADO (LOCAL + NUBE) ---
 async function saveData() {
-    // 1. Guardar LOCALMENTE primero (Instantáneo)
-    const localData = { turnos, perfil, timestamp: Date.now() };
-    localStorage.setItem('turnos_local_data', JSON.stringify(localData));
-    updateUI(); // Refrescar interfaz inmediatamente
+    try {
+        // 1. Guardar LOCALMENTE primero (Instantáneo)
+        const localData = { turnos, perfil, timestamp: Date.now() };
+        localStorage.setItem('turnos_local_data', JSON.stringify(localData));
+        updateUI(); // Refrescar interfaz inmediatamente
 
-    // 2. Enviar a SUPABASE en segundo plano
-    const { data: { user } } = await window.supabaseClient.auth.getUser();
-    if (user) {
-        // Enviar sin bloquear la interfaz
-        window.supabaseClient.from('usuarios_turnos').upsert({ 
-            user_id: user.id, 
-            datos_turnos: turnos,
-            datos_perfil: perfil, 
-            updated_at: new Date() 
-        }, { onConflict: 'user_id' }).then(({ error }) => {
-            if (error) console.error("Error sync nube:", error);
-            else console.log("Sincronizado con nube");
-        });
+        // 2. Enviar a SUPABASE en segundo plano
+        const { data: { user } } = await window.supabaseClient.auth.getUser();
+        if (user) {
+            console.log("Sincronizando con nube...");
+            window.supabaseClient.from('usuarios_turnos').upsert({ 
+                user_id: user.id, 
+                datos_turnos: turnos,
+                datos_perfil: perfil, 
+                updated_at: new Date() 
+            }, { onConflict: 'user_id' }).then(({ error }) => {
+                if (error) console.error("Error sync nube:", error);
+                else console.log("Sincronizado correctamente");
+            });
+        }
+    } catch(e) {
+        console.error("Error en saveData:", e);
     }
 }
 
@@ -148,24 +250,27 @@ async function loadData(uid) {
             const parsed = JSON.parse(stored);
             turnos = parsed.turnos || {};
             perfil = parsed.perfil || perfil;
-            console.log("Cargado desde LocalStorage");
-            updateUI(); // Mostrar datos locales
-        } catch (e) { console.log("Error leyendo local", e); }
+            console.log("Datos cargados desde LocalStorage");
+            updateUI(); 
+        } catch (e) { console.error("Error leyendo local", e); }
     }
 
     // 2. Buscar en SUPABASE (Nube)
-    const { data, error } = await window.supabaseClient.from('usuarios_turnos').select('datos_turnos, datos_perfil').eq('user_id', uid).maybeSingle();
-    
-    if (data) {
-        console.log("Datos recibidos de la nube");
-        // Mezclar o sobreescribir con datos frescos de la nube
-        turnos = data.datos_turnos || {};
-        if (data.datos_perfil) perfil = { ...perfil, ...data.datos_perfil };
+    try {
+        const { data, error } = await window.supabaseClient.from('usuarios_turnos').select('datos_turnos, datos_perfil').eq('user_id', uid).maybeSingle();
         
-        // Actualizar el local storage con lo nuevo de la nube
-        localStorage.setItem('turnos_local_data', JSON.stringify({ turnos, perfil, timestamp: Date.now() }));
-        
-        updateUI(); // Refrescar interfaz con datos de nube
+        if (error) throw error;
+
+        if (data) {
+            console.log("Datos recibidos de la nube");
+            turnos = data.datos_turnos || {};
+            if (data.datos_perfil) perfil = { ...perfil, ...data.datos_perfil };
+            
+            localStorage.setItem('turnos_local_data', JSON.stringify({ turnos, perfil, timestamp: Date.now() }));
+            updateUI(); 
+        }
+    } catch(e) {
+        console.error("Error cargando de nube:", e);
     }
 }
 
