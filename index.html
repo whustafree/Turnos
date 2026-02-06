@@ -67,15 +67,20 @@
                 </div>
             </div>
 
-            <div class="card p-2 flex justify-between items-center shadow-sm bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700">
-                <button onclick="cambiarMes(-1)" class="w-10 h-10 flex items-center justify-center text-gray-400 hover:text-blue-600 dark:hover:text-white rounded-lg transition"><i class="fas fa-chevron-left"></i></button>
-                <div class="text-center cursor-pointer" onclick="goToToday()">
-                    <h3 id="monthYear" class="text-lg font-bold text-gray-800 dark:text-white uppercase"></h3>
-                    <div class="text-[10px] text-blue-500 font-bold tracking-widest">HOY</div>
+            <div class="card p-2 flex justify-between items-center shadow-sm bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 flex-wrap gap-2">
+                <div class="flex items-center">
+                    <button onclick="cambiarMes(-1)" class="w-10 h-10 flex items-center justify-center text-gray-400 hover:text-blue-600 dark:hover:text-white rounded-lg transition"><i class="fas fa-chevron-left"></i></button>
+                    <div class="text-center cursor-pointer px-2" onclick="goToToday()">
+                        <h3 id="monthYear" class="text-lg font-bold text-gray-800 dark:text-white uppercase"></h3>
+                        <div class="text-[10px] text-blue-500 font-bold tracking-widest">HOY</div>
+                    </div>
+                    <button onclick="cambiarMes(1)" class="w-10 h-10 flex items-center justify-center text-gray-400 hover:text-blue-600 dark:hover:text-white rounded-lg transition"><i class="fas fa-chevron-right"></i></button>
                 </div>
-                <button onclick="cambiarMes(1)" class="w-10 h-10 flex items-center justify-center text-gray-400 hover:text-blue-600 dark:hover:text-white rounded-lg transition"><i class="fas fa-chevron-right"></i></button>
-                <select id="monthSelect" class="hidden" onchange="actualizarCalendario()"></select>
-                <select id="yearSelect" class="hidden" onchange="actualizarCalendario()"></select>
+                
+                <div class="flex gap-1 pr-2">
+                    <select id="monthSelect" class="bg-transparent text-sm font-bold text-gray-500 dark:text-gray-400 outline-none cursor-pointer border-none focus:ring-0" onchange="renderCalendar()"></select>
+                    <select id="yearSelect" class="bg-transparent text-sm font-bold text-gray-500 dark:text-gray-400 outline-none cursor-pointer border-none focus:ring-0" onchange="renderCalendar()"></select>
+                </div>
             </div>
 
             <div class="grid grid-cols-3 gap-2">
@@ -239,7 +244,7 @@
                     console.log("Limpieza de SW completada.");
                 } catch(e) { console.log('Error limpieza SW:', e); }
 
-                // SEGUNDO: Registrar el nuevo (El que te pasé corregido)
+                // SEGUNDO: Registrar el nuevo
                 navigator.serviceWorker.register('./sw.js')
                     .then(reg => console.log('SW Nuevo y Limpio registrado:', reg))
                     .catch(err => console.log('Error SW:', err));
@@ -251,7 +256,7 @@
     <script type="module">
         window.SUPABASE_URL = 'https://kjhrxdnwuwdmktdwuhdi.supabase.co';
         window.SUPABASE_KEY = 'sb_publishable_0nvqhjvJiytEFeif99jVsg_eiqOtXh9';
-        window.supabase = supabase.createClient(window.SUPABASE_URL, window.SUPABASE_KEY);
+        window.supabaseClient = supabase.createClient(window.SUPABASE_URL, window.SUPABASE_KEY);
     </script>
     <script type="module" src="script.js"></script>
 </body>

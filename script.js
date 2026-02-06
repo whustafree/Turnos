@@ -49,7 +49,7 @@ const FERIADOS = {
     'Sábado Santo': y => calcularSemanaSanta(y, -1),
     'Día del Trabajo': y => new Date(y, 4, 1),
     'Glorias Navales': y => new Date(y, 4, 21),
-    'San Pedro y Pablo': y => { let d = new Date(y, 5, 29); return d.getDay()===1 ? d : new Date(y, 5, 29); },
+    'San Pedro y Pablo': y => new Date(y, 5, 29), // Fijado para simplificación
     'Virgen del Carmen': y => new Date(y, 6, 16),
     'Asunción': y => new Date(y, 7, 15),
     'Fiestas Patrias': y => new Date(y, 8, 18),
@@ -82,7 +82,8 @@ function esDiaHabil(fecha) {
 
 // --- SUPABASE & DATA ---
 async function checkSession() {
-    const { data: { session } } = await window.supabase.auth.getSession();
+    // Usamos window.supabaseClient en lugar de window.supabase
+    const { data: { session } } = await window.supabaseClient.auth.getSession();
     if (session) {
         document.getElementById('loginScreen').classList.add('hidden');
         document.getElementById('appContent').classList.remove('hidden');
@@ -94,24 +95,24 @@ async function checkSession() {
     }
 }
 
-window.supabase.auth.onAuthStateChange(() => checkSession());
+window.supabaseClient.auth.onAuthStateChange(() => checkSession());
 
 window.login = async () => {
     const email = document.getElementById('loginEmail').value.trim();
     const pass = document.getElementById('loginPass').value.trim();
-    const { error } = await window.supabase.auth.signInWithPassword({ email, password: pass });
+    const { error } = await window.supabaseClient.auth.signInWithPassword({ email, password: pass });
     if (error) alert(error.message);
 };
 
 window.registro = async () => {
     const email = document.getElementById('loginEmail').value.trim();
     const pass = document.getElementById('loginPass').value.trim();
-    const { error } = await window.supabase.auth.signUp({ email, password: pass });
+    const { error } = await window.supabaseClient.auth.signUp({ email, password: pass });
     if (error) alert(error.message); else alert("Cuenta creada.");
 };
 
 window.cerrarSesion = () => {
-    window.supabase.auth.signOut();
+    window.supabaseClient.auth.signOut();
     localStorage.removeItem('turnos_local_data'); // Limpiar datos locales al salir
     location.reload();
 };
@@ -124,10 +125,10 @@ async function saveData() {
     updateUI(); // Refrescar interfaz inmediatamente
 
     // 2. Enviar a SUPABASE en segundo plano
-    const { data: { user } } = await window.supabase.auth.getUser();
+    const { data: { user } } = await window.supabaseClient.auth.getUser();
     if (user) {
         // Enviar sin bloquear la interfaz
-        window.supabase.from('usuarios_turnos').upsert({ 
+        window.supabaseClient.from('usuarios_turnos').upsert({ 
             user_id: user.id, 
             datos_turnos: turnos,
             datos_perfil: perfil, 
@@ -140,7 +141,7 @@ async function saveData() {
 }
 
 async function loadData(uid) {
-    // 1. Cargar desde LOCALSTORAGE primero (Instantáneo, evita pantalla en blanco)
+    // 1. Cargar desde LOCALSTORAGE primero
     const stored = localStorage.getItem('turnos_local_data');
     if (stored) {
         try {
@@ -152,8 +153,8 @@ async function loadData(uid) {
         } catch (e) { console.log("Error leyendo local", e); }
     }
 
-    // 2. Buscar en SUPABASE (Nube) y actualizar si es necesario
-    const { data, error } = await window.supabase.from('usuarios_turnos').select('datos_turnos, datos_perfil').eq('user_id', uid).maybeSingle();
+    // 2. Buscar en SUPABASE (Nube)
+    const { data, error } = await window.supabaseClient.from('usuarios_turnos').select('datos_turnos, datos_perfil').eq('user_id', uid).maybeSingle();
     
     if (data) {
         console.log("Datos recibidos de la nube");
@@ -486,6 +487,9 @@ window.aplicarCiclo3x3 = async () => {
     await saveData();
     alert("Ciclo aplicado.");
 };
+
+// --- ALIAS PARA COMPATIBILIDAD ---
+window.actualizarCalendario = window.renderCalendar;
 
 document.addEventListener('DOMContentLoaded', () => {
     const savedTheme = localStorage.getItem('theme');

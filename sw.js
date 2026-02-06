@@ -1,4 +1,4 @@
-const CACHE_NAME = 'turnos-v20-local';
+const CACHE_NAME = 'turnos-v21-fixed';
 const STATIC_ASSETS = [
   './',
   './index.html',
