@@ -1,5 +1,23 @@
-// --- SISTEMA DE LOGS INTERNOS (Para ver errores en pantalla) ---
+// ==========================================
+// CONFIGURACIÓN DE DEPURACIÓN
+// true = Muestra el botón y la consola (Modo Pruebas)
+// false = Oculta todo para el usuario final (Modo Producción)
+const MOSTRAR_DEBUG = false; 
+// ==========================================
+
+// --- SISTEMA DE LOGS INTERNOS ---
 function initInternalConsole() {
+    // Si la configuración es false, forzamos que el botón esté oculto y salimos
+    if (!MOSTRAR_DEBUG) {
+        const btn = document.getElementById('debugBtn');
+        if (btn) btn.classList.add('hidden');
+        return; // No iniciamos el sistema de logs
+    }
+
+    // Si es true, mostramos el botón
+    const btn = document.getElementById('debugBtn');
+    if (btn) btn.classList.remove('hidden');
+
     const output = document.getElementById('internalConsoleOutput');
     const statusMsg = document.getElementById('loginStatus');
     if(!output) return;
@@ -10,22 +28,19 @@ function initInternalConsole() {
         div.style.marginBottom = '2px';
         div.innerText = `[${new Date().toLocaleTimeString()}] ${msg}`;
         output.appendChild(div);
-        output.scrollTop = output.scrollHeight; // Auto-scroll
+        output.scrollTop = output.scrollHeight; 
         
-        // También mostrar error crítico en el login si estamos ahí
         if(type === 'error' && statusMsg) {
             statusMsg.innerText = "Error Interno: " + msg;
         }
     }
 
-    // Sobreescribir logs nativos
     const originalLog = console.log;
     const originalError = console.error;
     const originalWarn = console.warn;
 
     console.log = function(...args) {
         originalLog.apply(console, args);
-        // Convertir objetos a texto simple para mostrar
         const msg = args.map(a => (typeof a === 'object' ? JSON.stringify(a) : a)).join(' ');
         logToScreen(msg, 'log');
     };
@@ -34,7 +49,7 @@ function initInternalConsole() {
         originalError.apply(console, args);
         const msg = args.map(a => (typeof a === 'object' ? JSON.stringify(a) : a)).join(' ');
         logToScreen(msg, 'error');
-        // Asegurar que la consola se abra si hay error
+        // Abrir consola automáticamente solo si estamos en modo debug
         document.getElementById('internalDebug').classList.remove('hidden');
     };
 
@@ -44,13 +59,11 @@ function initInternalConsole() {
         logToScreen(msg, 'warn');
     };
 
-    // Capturar errores globales no controlados
     window.onerror = function(msg, url, line) {
         logToScreen(`Global Error: ${msg} (Line: ${line})`, 'error');
         return false;
     };
     
-    // Capturar Promesas rotas (ej. errores de Supabase silenciosos)
     window.onunhandledrejection = function(event) {
         logToScreen(`Unhandled Promise: ${event.reason}`, 'error');
     };
@@ -145,7 +158,6 @@ function esDiaHabil(fecha) {
 }
 
 // --- SUPABASE & DATA ---
-// MODIFICADO: Versión segura de checkSession
 async function checkSession() {
     console.log("Verificando sesión...");
     try {
@@ -166,13 +178,11 @@ async function checkSession() {
         }
     } catch (e) {
         console.error("Error crítico verificando sesión:", e);
-        // En caso de fallo, mostrar Login para no quedar en pantalla negra
         document.getElementById('loginScreen').classList.remove('hidden');
         document.getElementById('appContent').classList.add('hidden');
     }
 }
 
-// Escuchar cambios de sesión
 window.supabaseClient.auth.onAuthStateChange((event, session) => {
     console.log("Evento Auth:", event);
     if(event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
@@ -215,15 +225,13 @@ window.cerrarSesion = () => {
     location.reload();
 };
 
-// --- SISTEMA HÍBRIDO DE GUARDADO (LOCAL + NUBE) ---
+// --- SISTEMA HÍBRIDO DE GUARDADO ---
 async function saveData() {
     try {
-        // 1. Guardar LOCALMENTE primero (Instantáneo)
         const localData = { turnos, perfil, timestamp: Date.now() };
         localStorage.setItem('turnos_local_data', JSON.stringify(localData));
-        updateUI(); // Refrescar interfaz inmediatamente
+        updateUI(); 
 
-        // 2. Enviar a SUPABASE en segundo plano
         const { data: { user } } = await window.supabaseClient.auth.getUser();
         if (user) {
             console.log("Sincronizando con nube...");
@@ -243,7 +251,6 @@ async function saveData() {
 }
 
 async function loadData(uid) {
-    // 1. Cargar desde LOCALSTORAGE primero
     const stored = localStorage.getItem('turnos_local_data');
     if (stored) {
         try {
@@ -255,7 +262,6 @@ async function loadData(uid) {
         } catch (e) { console.error("Error leyendo local", e); }
     }
 
-    // 2. Buscar en SUPABASE (Nube)
     try {
         const { data, error } = await window.supabaseClient.from('usuarios_turnos').select('datos_turnos, datos_perfil').eq('user_id', uid).maybeSingle();
         
@@ -318,7 +324,7 @@ function updateDashboard() {
     document.getElementById('vacacionesProgress').style.width = `${pVac}%`;
 }
 
-// --- RESTAURACIÓN DE TURNOS ---
+// --- FUNCIONES DE CALCULO ---
 function calcularTurnoOriginal(fecha) {
     if (!perfil.patronActual) return null;
     const { fechaInicio, cicloId } = perfil.patronActual;
@@ -593,7 +599,6 @@ window.aplicarCiclo3x3 = async () => {
     alert("Ciclo aplicado.");
 };
 
-// --- ALIAS PARA COMPATIBILIDAD ---
 window.actualizarCalendario = window.renderCalendar;
 
 document.addEventListener('DOMContentLoaded', () => {
