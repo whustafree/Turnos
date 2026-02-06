@@ -119,7 +119,6 @@
             </div>
 
             <div id="tab-ausencias" class="tab-content hidden animate-slide-up">
-                
                 <div class="card p-6 mb-6 bg-white dark:bg-gray-800 border-l-4 border-yellow-400 rounded-xl shadow-sm">
                     <h3 class="font-bold text-lg mb-4 text-gray-800 dark:text-white flex items-center gap-2">
                         <i class="fas fa-plus-circle text-yellow-500"></i> Registrar Vacaciones
@@ -141,17 +140,11 @@
                             <p class="text-xs text-gray-500 dark:text-gray-400">Bloqueará los días en el calendario.</p>
                         </div>
                     </div>
-                    
                     <div class="flex gap-2">
-                        <button onclick="guardarVacaciones()" class="flex-1 py-3 bg-yellow-500 text-white font-bold rounded-xl hover:bg-yellow-600 shadow-md transition">
-                            GUARDAR PERIODO
-                        </button>
-                        <button onclick="generarCartaVacaciones()" class="px-4 py-3 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 text-gray-700 dark:text-white font-bold rounded-xl hover:bg-gray-50 dark:hover:bg-gray-600 shadow-sm transition" title="Copiar carta para Jefatura">
-                            <i class="fas fa-envelope-open-text"></i> Carta
-                        </button>
+                        <button onclick="guardarVacaciones()" class="flex-1 py-3 bg-yellow-500 text-white font-bold rounded-xl hover:bg-yellow-600 shadow-md transition">GUARDAR PERIODO</button>
+                        <button onclick="generarCartaVacaciones()" class="px-4 py-3 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 text-gray-700 dark:text-white font-bold rounded-xl hover:bg-gray-50 dark:hover:bg-gray-600 shadow-sm transition" title="Copiar carta"><i class="fas fa-envelope-open-text"></i> Carta</button>
                     </div>
                 </div>
-
                 <div class="card p-6 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm">
                     <h3 class="font-bold text-lg mb-4 text-gray-800 dark:text-white">Historial de Ausencias</h3>
                     <div id="listaAusencias" class="space-y-2 max-h-80 overflow-y-auto pr-2">
@@ -230,16 +223,17 @@
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', async () => {
+                // 1. Intentar desregistrar SWs viejos o corruptos
                 try {
-                    // DESINSTALAR CUALQUIER SERVICE WORKER VIEJO POR SEGURIDAD
                     const registrations = await navigator.serviceWorker.getRegistrations();
                     for(let registration of registrations) {
+                        // Forzamos la eliminación para asegurarnos de que se instale el nuevo sw.js limpio
                         await registration.unregister();
-                        console.log("SW antiguo desinstalado.");
+                        console.log("SW antiguo eliminado por seguridad.");
                     }
-                } catch(e) { console.log('Error limpieza SW:', e); }
+                } catch(e) { console.log('Limpieza SW saltada'); }
 
-                // INSTALAR EL NUEVO (Limpio)
+                // 2. Registrar el nuevo SW limpio
                 navigator.serviceWorker.register('./sw.js')
                     .then(reg => console.log('SW Nuevo registrado:', reg))
                     .catch(err => console.log('Error SW:', err));
