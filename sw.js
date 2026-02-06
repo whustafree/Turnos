@@ -1,32 +1,31 @@
-const CACHE_NAME = 'turnos-v5-final'; // Cambié versión para forzar actualización
+const CACHE_NAME = 'turnos-v6-fix'; // Versión nueva para forzar limpieza
 const STATIC_ASSETS = [
   './',
   './index.html',
   './style.css',
   './script.js',
   './manifest.json'
-  // NOTA: No ponemos librerías externas aquí para evitar error CORS al instalar
 ];
 
-// 1. INSTALACIÓN: Solo archivos locales
+// 1. INSTALACIÓN
 self.addEventListener('install', event => {
   self.skipWaiting();
   event.waitUntil(
     caches.open(CACHE_NAME).then(cache => {
-      console.log('SW: Pre-cacheando archivos locales');
+      console.log('SW: Guardando archivos locales...');
       return cache.addAll(STATIC_ASSETS);
     })
   );
 });
 
-// 2. ACTIVACIÓN: Limpiar cachés viejas
+// 2. ACTIVACIÓN (Limpieza de caché vieja)
 self.addEventListener('activate', event => {
   event.waitUntil(
     caches.keys().then(keys => {
       return Promise.all(
         keys.map(key => {
           if (key !== CACHE_NAME) {
-            console.log('SW: Borrando caché vieja', key);
+            console.log('SW: Borrando caché antigua', key);
             return caches.delete(key);
           }
         })
@@ -36,38 +35,22 @@ self.addEventListener('activate', event => {
   self.clients.claim();
 });
 
-// 3. FETCH: Cache Dinámico (Guarda lo externo automáticamente al usarlo)
+// 3. FETCH (INTERCEPTOR)
 self.addEventListener('fetch', event => {
   const req = event.request;
 
-  // Solo interceptar GET http/https
-  if (req.method !== 'GET' || !req.url.startsWith('http')) return;
+  // --- SOLUCIÓN DEL ERROR ---
+  // Si la petición es externa (Tailwind, Supabase, Fuentes), NO la interceptamos.
+  // Dejamos que el navegador la maneje directamente para evitar errores de CORS.
+  if (req.url.includes('http') && !req.url.includes(self.location.origin)) {
+    return; 
+  }
 
+  // Para archivos locales, usamos la estrategia: Caché primero, luego Red
   event.respondWith(
     caches.match(req).then(cachedRes => {
-      // Si ya lo tenemos guardado (ej: Tailwind después de la primera carga), lo devolvemos rápido
-      if (cachedRes) {
-        return cachedRes;
-      }
-
-      // Si no, vamos a internet
-      return fetch(req).then(networkRes => {
-        // Verificamos que la respuesta sea válida
-        if (!networkRes || networkRes.status !== 200 || networkRes.type === 'error') {
-          return networkRes;
-        }
-
-        // Guardamos copia en caché para la próxima vez (y para offline)
-        const responseToCache = networkRes.clone();
-        caches.open(CACHE_NAME).then(cache => {
-          cache.put(req, responseToCache);
-        });
-
-        return networkRes;
-      }).catch(() => {
-        // Si falla internet y no estaba en caché...
-        console.log('Offline y recurso no cacheado:', req.url);
-      });
+      if (cachedRes) return cachedRes;
+      return fetch(req).catch(err => console.log('Fallo de red:', err));
     })
   );
 });
