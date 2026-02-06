@@ -1,16 +1,15 @@
-const CACHE_NAME = 'turnos-v7-final'; // Cambié versión para limpiar errores previos
+const CACHE_NAME = 'turnos-v9-rescue'; // Versión nueva para forzar borrado
 const STATIC_ASSETS = [
   './',
   './index.html',
   './style.css',
   './script.js',
   './manifest.json'
-  // IMPORTANTE: NO ponemos aquí tailwind ni supabase para evitar el error CORS
 ];
 
-// 1. INSTALACIÓN (Solo archivos locales)
+// 1. INSTALACIÓN
 self.addEventListener('install', event => {
-  self.skipWaiting();
+  self.skipWaiting(); // Fuerza activación inmediata
   event.waitUntil(
     caches.open(CACHE_NAME).then(cache => {
       console.log('SW: Cacheando archivos locales...');
@@ -19,14 +18,14 @@ self.addEventListener('install', event => {
   );
 });
 
-// 2. ACTIVACIÓN (Limpieza)
+// 2. ACTIVACIÓN (Limpieza agresiva de versiones viejas)
 self.addEventListener('activate', event => {
   event.waitUntil(
     caches.keys().then(keys => {
       return Promise.all(
         keys.map(key => {
           if (key !== CACHE_NAME) {
-            console.log('SW: Borrando caché vieja', key);
+            console.log('SW: Eliminando caché corrupta/vieja', key);
             return caches.delete(key);
           }
         })
@@ -36,21 +35,32 @@ self.addEventListener('activate', event => {
   self.clients.claim();
 });
 
-// 3. FETCH (Estrategia Segura)
+// 3. FETCH (Estrategia de seguridad)
 self.addEventListener('fetch', event => {
   const req = event.request;
+  const url = req.url;
 
-  // Si es una petición externa (http/https que no es de mi dominio), la dejamos pasar normal
-  // Esto evita el error de CORS con Tailwind y Supabase
-  if (req.url.includes('http') && !req.url.includes(self.location.origin)) {
-    return; 
+  // --- REGLA DE ORO: IGNORAR EXTERNOS ---
+  // Si la URL es de Tailwind, Supabase, FontAwesome o cualquier cosa fuera de tu dominio...
+  // EL SERVICE WORKER NO HACE NADA. Deja que el navegador lo maneje normal.
+  if (url.includes('cdn.tailwindcss.com') || 
+      url.includes('supabase.co') || 
+      url.includes('cloudflare.com') ||
+      url.includes('jspdf') ||
+      !url.includes(self.location.origin)) {
+    return; // Salir y no tocar la petición
   }
 
-  // Para archivos locales, intentamos caché primero, luego red
+  // Solo interceptamos archivos locales (index.html, style.css, script.js)
+  // Estrategia: Network First (Intenta internet, si falla, usa caché)
   event.respondWith(
-    caches.match(req).then(cachedRes => {
-      if (cachedRes) return cachedRes;
-      return fetch(req).catch(err => console.log('Error de red:', err));
-    })
+    fetch(req)
+      .then(networkRes => {
+        return caches.open(CACHE_NAME).then(cache => {
+          cache.put(req, networkRes.clone());
+          return networkRes;
+        });
+      })
+      .catch(() => caches.match(req)) // Si no hay internet, usa caché
   );
 });
