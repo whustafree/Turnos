@@ -1,20 +1,18 @@
 // ==========================================
 // CONFIGURACIÓN DE DEPURACIÓN
-// true = Muestra el botón y la consola (Modo Pruebas)
+// true = Muestra el botón y consola (Modo Pruebas)
 // false = Oculta todo para el usuario final (Modo Producción)
 const MOSTRAR_DEBUG = false; 
 // ==========================================
 
 // --- SISTEMA DE LOGS INTERNOS ---
 function initInternalConsole() {
-    // Si la configuración es false, forzamos que el botón esté oculto y salimos
     if (!MOSTRAR_DEBUG) {
         const btn = document.getElementById('debugBtn');
         if (btn) btn.classList.add('hidden');
-        return; // No iniciamos el sistema de logs
+        return; 
     }
 
-    // Si es true, mostramos el botón
     const btn = document.getElementById('debugBtn');
     if (btn) btn.classList.remove('hidden');
 
@@ -49,7 +47,6 @@ function initInternalConsole() {
         originalError.apply(console, args);
         const msg = args.map(a => (typeof a === 'object' ? JSON.stringify(a) : a)).join(' ');
         logToScreen(msg, 'error');
-        // Abrir consola automáticamente solo si estamos en modo debug
         document.getElementById('internalDebug').classList.remove('hidden');
     };
 
@@ -71,7 +68,6 @@ function initInternalConsole() {
     console.log("Sistema de Log Interno Iniciado...");
 }
 
-// Iniciar log inmediatamente
 initInternalConsole();
 
 // --- VARIABLES GLOBALES ---
@@ -183,13 +179,13 @@ async function checkSession() {
     }
 }
 
+// Listener de cambios de estado
 window.supabaseClient.auth.onAuthStateChange((event, session) => {
     console.log("Evento Auth:", event);
     if(event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
         checkSession();
-    } else if (event === 'SIGNED_OUT') {
-        window.location.reload();
-    }
+    } 
+    // Quitamos el reload automático aquí para controlarlo manualmente en cerrarSesion
 });
 
 window.login = async () => {
@@ -218,11 +214,23 @@ window.registro = async () => {
     }
 };
 
-window.cerrarSesion = () => {
+// --- FUNCIÓN CERRAR SESIÓN (CORREGIDA) ---
+window.cerrarSesion = async () => {
     console.log("Cerrando sesión...");
-    window.supabaseClient.auth.signOut();
-    localStorage.removeItem('turnos_local_data'); 
-    location.reload();
+    try {
+        // 1. Limpiamos datos locales
+        localStorage.removeItem('turnos_local_data');
+        
+        // 2. ESPERAMOS a que Supabase confirme la salida
+        await window.supabaseClient.auth.signOut();
+        
+    } catch (error) {
+        console.error("Error al cerrar sesión (Supabase):", error);
+    } finally {
+        // 3. Recargamos solo cuando estamos seguros de que terminó
+        console.log("Sesión cerrada, recargando...");
+        window.location.reload();
+    }
 };
 
 // --- SISTEMA HÍBRIDO DE GUARDADO ---
