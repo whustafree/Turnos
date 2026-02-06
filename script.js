@@ -13,14 +13,14 @@ let perfil = {
 let diaSeleccionado = null;
 let feriadosCache = {};
 
-// --- CICLOS DEFINIDOS AL INICIO ---
+// --- CICLOS ---
 const CICLOS_3X3 = {
     '1': ['dia', 'dia', 'dia'], '2': ['noche', 'noche', 'noche'], '3': ['dia', 'noche', 'dia'],
     '4': ['noche', 'noche', 'dia'], '5': ['noche', 'dia', 'noche'], '6': ['dia', 'noche', 'noche'],
     '7': ['dia', 'dia', 'noche'], '8': ['dia', 'noche', 'dia'], '9': ['noche', 'dia', 'dia']
 };
 
-// --- 1. CONFIGURACIÓN Y TEMA ---
+// --- CONFIGURACIÓN Y TEMA ---
 window.toggleTheme = () => {
     const body = document.body;
     const isDark = body.getAttribute('data-theme') === 'dark';
@@ -42,7 +42,7 @@ function actualizarIconoTema() {
     }
 }
 
-// --- 2. LÓGICA DE FERIADOS ---
+// --- FERIADOS ---
 const FERIADOS = {
     'Año Nuevo': y => new Date(y, 0, 1),
     'Viernes Santo': y => calcularSemanaSanta(y, -2),
@@ -75,17 +75,19 @@ function esFeriado(fecha) {
 
 function esDiaHabil(fecha) {
     const diaSemana = fecha.getDay();
-    if (diaSemana === 0 || diaSemana === 6) return false; 
+    if (diaSemana === 0 || diaSemana === 6) return false;
     if (esFeriado(fecha)) return false;
     return true;
 }
 
-// --- 3. SUPABASE ---
+// --- SUPABASE & DATA ---
 async function checkSession() {
     const { data: { session } } = await window.supabase.auth.getSession();
     if (session) {
         document.getElementById('loginScreen').classList.add('hidden');
         document.getElementById('appContent').classList.remove('hidden');
+        
+        // Cargar datos
         await loadData(session.user.id);
     } else {
         document.getElementById('loginScreen').classList.remove('hidden');
@@ -108,27 +110,61 @@ window.registro = async () => {
     if (error) alert(error.message); else alert("Cuenta creada.");
 };
 
-window.cerrarSesion = () => window.supabase.auth.signOut();
+window.cerrarSesion = () => {
+    window.supabase.auth.signOut();
+    localStorage.removeItem('turnos_local_data'); // Limpiar datos locales al salir
+    location.reload();
+};
 
+// --- SISTEMA HÍBRIDO DE GUARDADO (LOCAL + NUBE) ---
 async function saveData() {
+    // 1. Guardar LOCALMENTE primero (Instantáneo)
+    const localData = { turnos, perfil, timestamp: Date.now() };
+    localStorage.setItem('turnos_local_data', JSON.stringify(localData));
+    updateUI(); // Refrescar interfaz inmediatamente
+
+    // 2. Enviar a SUPABASE en segundo plano
     const { data: { user } } = await window.supabase.auth.getUser();
     if (user) {
-        await window.supabase.from('usuarios_turnos').upsert({ 
+        // Enviar sin bloquear la interfaz
+        window.supabase.from('usuarios_turnos').upsert({ 
             user_id: user.id, 
             datos_turnos: turnos,
             datos_perfil: perfil, 
             updated_at: new Date() 
-        }, { onConflict: 'user_id' });
+        }, { onConflict: 'user_id' }).then(({ error }) => {
+            if (error) console.error("Error sync nube:", error);
+            else console.log("Sincronizado con nube");
+        });
     }
-    updateUI();
 }
 
 async function loadData(uid) {
-    const { data } = await window.supabase.from('usuarios_turnos').select('datos_turnos, datos_perfil').eq('user_id', uid).maybeSingle();
+    // 1. Cargar desde LOCALSTORAGE primero (Instantáneo, evita pantalla en blanco)
+    const stored = localStorage.getItem('turnos_local_data');
+    if (stored) {
+        try {
+            const parsed = JSON.parse(stored);
+            turnos = parsed.turnos || {};
+            perfil = parsed.perfil || perfil;
+            console.log("Cargado desde LocalStorage");
+            updateUI(); // Mostrar datos locales
+        } catch (e) { console.log("Error leyendo local", e); }
+    }
+
+    // 2. Buscar en SUPABASE (Nube) y actualizar si es necesario
+    const { data, error } = await window.supabase.from('usuarios_turnos').select('datos_turnos, datos_perfil').eq('user_id', uid).maybeSingle();
+    
     if (data) {
+        console.log("Datos recibidos de la nube");
+        // Mezclar o sobreescribir con datos frescos de la nube
         turnos = data.datos_turnos || {};
         if (data.datos_perfil) perfil = { ...perfil, ...data.datos_perfil };
-        updateUI();
+        
+        // Actualizar el local storage con lo nuevo de la nube
+        localStorage.setItem('turnos_local_data', JSON.stringify({ turnos, perfil, timestamp: Date.now() }));
+        
+        updateUI(); // Refrescar interfaz con datos de nube
     }
 }
 
@@ -138,7 +174,7 @@ function updateUI() {
     window.renderListaAusencias();
 }
 
-// --- 4. DASHBOARD ---
+// --- DASHBOARD ---
 function updateDashboard() {
     document.getElementById('userNombre').innerText = perfil.nombre || 'Usuario';
     document.getElementById('userCargo').innerText = perfil.cargo || 'Cargo no def.';
@@ -176,26 +212,18 @@ function updateDashboard() {
     document.getElementById('vacacionesProgress').style.width = `${pVac}%`;
 }
 
-// --- 5. GESTIÓN AUSENCIAS Y RESTAURACIÓN ---
+// --- RESTAURACIÓN DE TURNOS ---
 function calcularTurnoOriginal(fecha) {
     if (!perfil.patronActual) return null;
-
     const { fechaInicio, cicloId } = perfil.patronActual;
     const patronTrabajo = CICLOS_3X3[cicloId];
-    
     const [iy, im, id] = fechaInicio.split('-').map(Number);
     const startDate = new Date(iy, im - 1, id);
-    
     if (fecha < startDate) return null;
-
     const diffDays = Math.floor((fecha - startDate) / (1000 * 60 * 60 * 24));
     let pos = diffDays % 6; if(pos < 0) pos += 6;
-
-    if (pos < 3) {
-        return patronTrabajo[pos];
-    } else {
-        return null;
-    }
+    if (pos < 3) return patronTrabajo[pos];
+    return null;
 }
 
 function agruparFechas(items) {
@@ -220,10 +248,8 @@ window.renderListaAusencias = () => {
     const container = document.getElementById('listaAusencias');
     if (!container) return;
     container.innerHTML = '';
-
     const y = parseInt(document.getElementById('yearSelect').value);
     let items = [];
-
     if (turnos[y]) {
         Object.keys(turnos[y]).forEach(m => {
             Object.keys(turnos[y][m]).forEach(d => {
@@ -234,63 +260,42 @@ window.renderListaAusencias = () => {
             });
         });
     }
-
     if (items.length === 0) {
         container.innerHTML = '<p class="text-center text-gray-400 py-4 text-xs">No hay ausencias este año.</p>';
         return;
     }
-
     const grupos = agruparFechas(items);
-
     grupos.forEach(grupo => {
         const inicio = grupo[0].fecha;
         const fin = grupo[grupo.length - 1].fecha;
         const tipo = grupo[0].tipo;
-        
         const inicioISO = inicio.getFullYear() + '-' + (inicio.getMonth() + 1) + '-' + inicio.getDate();
         const finISO = fin.getFullYear() + '-' + (fin.getMonth() + 1) + '-' + fin.getDate();
-
         const textoRango = (inicio.getTime() === fin.getTime()) ? inicio.toLocaleDateString('es-CL') : `Del ${inicio.toLocaleDateString('es-CL')} al ${fin.toLocaleDateString('es-CL')}`;
-        
         const diasHabiles = grupo.filter(g => esDiaHabil(g.fecha)).length;
         const subtitulo = tipo === 'vacaciones' ? `${diasHabiles} días hábiles` : 'Día Administrativo';
         const colorClass = tipo === 'vacaciones' ? 'text-yellow-600 bg-yellow-100 dark:bg-yellow-900/30' : 'text-blue-600 bg-blue-100 dark:bg-blue-900/30';
         const iconClass = tipo === 'vacaciones' ? 'fa-umbrella-beach' : 'fa-file-contract';
-
         const div = document.createElement('div');
         div.className = "flex justify-between items-center p-3 mb-2 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-xl shadow-sm";
-        div.innerHTML = `
-            <div class="flex items-center gap-3">
-                <div class="p-2 rounded-lg ${colorClass}"><i class="fas ${iconClass}"></i></div>
-                <div>
-                    <div class="font-bold text-sm text-gray-700 dark:text-gray-200">${tipo === 'vacaciones' ? 'Vacaciones' : 'Administrativo'}</div>
-                    <div class="text-xs text-gray-500 dark:text-gray-400">${textoRango}</div>
-                    <div class="text-[10px] text-gray-400">${subtitulo}</div>
-                </div>
-            </div>
-            <button class="text-red-400 hover:text-red-600 p-2 transition"><i class="fas fa-trash"></i></button>
-        `;
+        div.innerHTML = `<div class="flex items-center gap-3"><div class="p-2 rounded-lg ${colorClass}"><i class="fas ${iconClass}"></i></div><div><div class="font-bold text-sm text-gray-700 dark:text-gray-200">${tipo === 'vacaciones' ? 'Vacaciones' : 'Administrativo'}</div><div class="text-xs text-gray-500 dark:text-gray-400">${textoRango}</div><div class="text-[10px] text-gray-400">${subtitulo}</div></div></div><button class="text-red-400 hover:text-red-600 p-2 transition"><i class="fas fa-trash"></i></button>`;
         div.querySelector('button').onclick = () => window.eliminarPeriodo(inicioISO, finISO);
         container.appendChild(div);
     });
 };
 
 window.eliminarPeriodo = async (inicioStr, finStr) => {
-    if(!confirm("¿Eliminar este periodo y restaurar turnos originales?")) return;
-
+    if(!confirm("¿Eliminar y restaurar turnos?")) return;
     const [yi, mi, di] = inicioStr.split('-').map(Number);
     const [yf, mf, df] = finStr.split('-').map(Number);
     const start = new Date(yi, mi - 1, di);
     const end = new Date(yf, mf - 1, df);
-    
     let loop = new Date(start);
     while(loop <= end) {
         const cy = loop.getFullYear();
         const cm = loop.getMonth();
         const cd = loop.getDate();
-        
         const turnoOriginal = calcularTurnoOriginal(loop);
-
         if (turnoOriginal) {
             if(!turnos[cy]) turnos[cy] = {};
             if(!turnos[cy][cm]) turnos[cy][cm] = {};
@@ -306,128 +311,80 @@ window.eliminarPeriodo = async (inicioStr, finStr) => {
 window.generarCartaVacaciones = () => {
     const startStr = document.getElementById('vacStart').value;
     const endStr = document.getElementById('vacEnd').value;
-    
-    if(!startStr || !endStr) return alert("Selecciona las fechas primero");
-
+    if(!startStr || !endStr) return alert("Selecciona fechas");
     const [sy, sm, sd] = startStr.split('-').map(Number);
     const [ey, em, ed] = endStr.split('-').map(Number);
     const start = new Date(sy, sm-1, sd);
     const end = new Date(ey, em-1, ed);
-
     let habiles = 0;
     let loop = new Date(start);
-    while(loop <= end) {
-        if(esDiaHabil(loop)) habiles++;
-        loop.setDate(loop.getDate() + 1);
-    }
-
-    const texto = `Estimada Jefatura,
-
-Junto con saludar, solicito hacer uso de mi feriado legal desde el ${start.toLocaleDateString('es-CL')} hasta el ${end.toLocaleDateString('es-CL')}, ambas fechas inclusive.
-
-Este periodo corresponde a ${habiles} días hábiles.
-
-Quedo atento/a a su aprobación.
-
-Atte,
-${perfil.nombre || 'Nombre Colaborador'}
-${perfil.cargo || ''}`;
-
-    navigator.clipboard.writeText(texto).then(() => {
-        alert("¡Carta copiada al portapapeles!");
-    });
+    while(loop <= end) { if(esDiaHabil(loop)) habiles++; loop.setDate(loop.getDate() + 1); }
+    const texto = `Estimada Jefatura,\n\nSolicito feriado legal del ${start.toLocaleDateString('es-CL')} al ${end.toLocaleDateString('es-CL')}.\nTotal: ${habiles} días hábiles.\n\nAtte,\n${perfil.nombre || 'Colaborador'}`;
+    navigator.clipboard.writeText(texto).then(() => alert("Carta copiada!"));
 };
 
 window.guardarVacaciones = async () => {
     const startStr = document.getElementById('vacStart').value;
     const endStr = document.getElementById('vacEnd').value;
     const aprobado = document.getElementById('vacAprobado').checked;
-
     if (!startStr || !endStr) return alert("Selecciona fechas");
     const [sy, sm, sd] = startStr.split('-').map(Number);
     const start = new Date(sy, sm - 1, sd);
     const [ey, em, ed] = endStr.split('-').map(Number);
     const end = new Date(ey, em - 1, ed);
-    
-    if (end < start) return alert("Fecha fin menor a inicio");
-
+    if (end < start) return alert("Fechas incorrectas");
     let loop = new Date(start);
     while (loop <= end) {
         const cy = loop.getFullYear();
         const cm = loop.getMonth();
         const cd = loop.getDate();
-
         if(!turnos[cy]) turnos[cy] = {};
         if(!turnos[cy][cm]) turnos[cy][cm] = {};
-
-        turnos[cy][cm][cd] = {
-            tipo: 'vacaciones',
-            turnos: ['VAC'],
-            estado: aprobado ? 'aprobado' : 'pendiente',
-            locked: aprobado
-        };
+        turnos[cy][cm][cd] = { tipo: 'vacaciones', turnos: ['VAC'], estado: aprobado ? 'aprobado' : 'pendiente', locked: aprobado };
         loop.setDate(loop.getDate() + 1);
     }
     await saveData();
-    alert("Vacaciones registradas.");
+    alert("Vacaciones guardadas.");
 };
 
 window.marcarAdministrativo = async () => {
-    if (perfil.adminUsados >= perfil.adminTotal) {
-        if(!confirm("Límite de administrativos alcanzado. ¿Continuar?")) return;
-    }
+    if (perfil.adminUsados >= perfil.adminTotal && !confirm("Límite alcanzado. ¿Continuar?")) return;
     const y = document.getElementById('yearSelect').value;
     const m = document.getElementById('monthSelect').value;
-    
-    turnos[y][m][diaSeleccionado] = { 
-        tipo: 'administrativo', 
-        turnos: ['Admin'],
-        estado: 'aprobado',
-        locked: true
-    };
+    turnos[y][m][diaSeleccionado] = { tipo: 'administrativo', turnos: ['Admin'], estado: 'aprobado', locked: true };
     await saveData();
     document.getElementById('turnoModal').classList.add('hidden');
 };
 
-// --- 6. CALENDARIO ---
 window.renderCalendar = () => {
     const y = parseInt(document.getElementById('yearSelect').value);
     const m = parseInt(document.getElementById('monthSelect').value);
     const grid = document.getElementById('calendar');
     document.getElementById('monthYear').innerText = new Date(y, m).toLocaleString('es-ES', { month: 'long', year: 'numeric' });
-
     grid.innerHTML = '';
     const firstDay = (new Date(y, m, 1).getDay() + 6) % 7;
     const totalDays = new Date(y, m + 1, 0).getDate();
-
     for(let i=0; i<firstDay; i++) grid.innerHTML += `<div></div>`;
-
     for(let d=1; d<=totalDays; d++) {
         const data = turnos[y]?.[m]?.[d];
         const div = document.createElement('div');
         let classes = "day rounded-xl p-1 flex flex-col justify-between cursor-pointer relative";
-        
         if (data?.tipo === 'vacaciones') classes += " vacaciones";
         else if (data?.tipo === 'administrativo') classes += " administrativo";
         if (data?.locked) classes += " opacity-80";
-
         let content = `<div class="flex justify-between"><span class="text-sm font-bold text-gray-500 dark:text-gray-400 ml-1">${d}</span>${data?.locked ? '<i class="fas fa-lock text-[10px] text-gray-400"></i>' : ''}</div>`;
-        
         if (data) {
-            if (data.tipo === 'vacaciones') {
-                content += `<div class="text-[10px] text-yellow-700 dark:text-yellow-300 text-center font-bold mt-2 bg-yellow-100 dark:bg-yellow-900/30 rounded py-1">VAC</div>`;
-            } else if (data.tipo === 'administrativo') {
-                content += `<div class="text-[10px] text-blue-700 dark:text-blue-300 text-center font-bold mt-2 bg-blue-100 dark:bg-blue-900/30 rounded py-1">ADMIN</div>`;
-            } else if (data.turnos) {
+            if (data.tipo === 'vacaciones') content += `<div class="text-[10px] text-yellow-700 dark:text-yellow-300 text-center font-bold mt-2 bg-yellow-100 dark:bg-yellow-900/30 rounded py-1">VAC</div>`;
+            else if (data.tipo === 'administrativo') content += `<div class="text-[10px] text-blue-700 dark:text-blue-300 text-center font-bold mt-2 bg-blue-100 dark:bg-blue-900/30 rounded py-1">ADMIN</div>`;
+            else if (data.turnos) {
                 data.turnos.forEach(t => {
                     let c = 't-dia';
                     if(t.includes('noche')) c = 't-noche';
                     if(t.includes('extra')) c = 't-extra';
-                    content += `<span class="turno-badge ${c} w-full text-center">${t === 'dia' ? 'DÍA' : (t==='noche'?'NOCHE':t)}</span>`;
+                    content += `<span class="turno-badge ${c} w-full text-center">${t.replace('extra-','').toUpperCase()}</span>`;
                 });
             }
         }
-
         div.className = classes;
         div.innerHTML = content;
         div.onclick = () => {
@@ -441,19 +398,14 @@ window.renderCalendar = () => {
     }
 };
 
-// --- HELPERS ---
 window.agregarTurno = async (tipo) => {
     const y = document.getElementById('yearSelect').value;
     const m = document.getElementById('monthSelect').value;
     if(!turnos[y]) turnos[y] = {};
     if(!turnos[y][m]) turnos[y][m] = {};
-    
     let current = [];
-    if(turnos[y][m][diaSeleccionado]?.tipo === 'turno') {
-        current = turnos[y][m][diaSeleccionado].turnos;
-    }
+    if(turnos[y][m][diaSeleccionado]?.tipo === 'turno') current = turnos[y][m][diaSeleccionado].turnos;
     if(!current.includes(tipo)) current.push(tipo);
-    
     turnos[y][m][diaSeleccionado] = { turnos: current, tipo: 'turno' };
     await saveData();
     document.getElementById('turnoModal').classList.add('hidden');
@@ -462,10 +414,7 @@ window.agregarTurno = async (tipo) => {
 window.quitarTurno = async () => {
     const y = document.getElementById('yearSelect').value;
     const m = document.getElementById('monthSelect').value;
-    if(turnos[y]?.[m]?.[diaSeleccionado]) {
-        delete turnos[y][m][diaSeleccionado];
-        await saveData();
-    }
+    if(turnos[y]?.[m]?.[diaSeleccionado]) { delete turnos[y][m][diaSeleccionado]; await saveData(); }
     document.getElementById('turnoModal').classList.add('hidden');
 };
 
@@ -515,42 +464,33 @@ window.aplicarCiclo3x3 = async () => {
     const cicloId = document.getElementById('ciclo3x3Select').value;
     const patronTrabajo = CICLOS_3X3[cicloId];
     const fechaInput = document.getElementById('fechaInicio').value;
-    if (!fechaInput) return alert("Selecciona fecha inicio");
-    
+    if (!fechaInput) return alert("Selecciona fecha");
     perfil.patronActual = { fechaInicio: fechaInput, cicloId: cicloId };
-    
     const [iy, im, id] = fechaInput.split('-').map(Number);
     const startDate = new Date(iy, im - 1, id); 
     const y = parseInt(document.getElementById('yearSelect').value);
     const m = parseInt(document.getElementById('monthSelect').value);
-    
     if(!turnos[y]) turnos[y] = {};
     if(!turnos[y][m]) turnos[y][m] = {};
-
     const diasMes = new Date(y, m + 1, 0).getDate();
     for(let d=1; d<=diasMes; d++) {
         const currentDate = new Date(y, m, d);
         if (currentDate < startDate) continue;
         const diffDays = Math.floor((currentDate - startDate) / (1000 * 3600 * 24));
         let pos = diffDays % 6; if(pos < 0) pos += 6;
-
         if (!turnos[y][m][d]?.locked) {
-            if (pos < 3) {
-                turnos[y][m][d] = { turnos: [patronTrabajo[pos]], tipo: 'turno' };
-            } else {
-                if(turnos[y][m][d] && turnos[y][m][d].tipo === 'turno') delete turnos[y][m][d];
-            }
+            if (pos < 3) turnos[y][m][d] = { turnos: [patronTrabajo[pos]], tipo: 'turno' };
+            else if(turnos[y][m][d] && turnos[y][m][d].tipo === 'turno') delete turnos[y][m][d];
         }
     }
     await saveData();
-    alert("Ciclo aplicado y configuración guardada.");
+    alert("Ciclo aplicado.");
 };
 
 document.addEventListener('DOMContentLoaded', () => {
     const savedTheme = localStorage.getItem('theme');
     if (savedTheme === 'dark') document.body.setAttribute('data-theme', 'dark');
     actualizarIconoTema();
-
     const ys = document.getElementById('yearSelect');
     const ms = document.getElementById('monthSelect');
     for(let i=2024; i<=2030; i++) ys.innerHTML+=`<option value="${i}">${i}</option>`;
