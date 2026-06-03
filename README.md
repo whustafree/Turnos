@@ -222,6 +222,98 @@ MIT
 
 ---
 
+## 🚀 Generar APK Firmada (Release)
+
+### Requisitos
+- Java JDK 17+ instalado (`java -version`)
+- Una cuenta en GitHub con el repositorio configurado
+
+### 1️⃣ Generar el Keystore
+
+Ejecuta el script correspondiente a tu sistema operativo:
+
+**Windows:**
+```bash
+scripts\generate-keystore.bat
+```
+
+**Linux / macOS / Git Bash:**
+```bash
+bash scripts/generate-keystore.sh
+```
+
+El script te pedirá:
+- **Contraseña del keystore** — guárdala en un lugar seguro
+- **Contraseña de la key** — puede ser la misma o diferente
+- **Datos del propietario** — puedes dejar vacío (usa valores por defecto)
+
+Esto generará un archivo `turnos-keystore.jks` en la raíz del proyecto.
+
+### 2️⃣ Codificar el Keystore para GitHub
+
+Convierte el keystore a base64 para poder subirlo como Secret:
+
+**Windows:**
+```bash
+certutil -encode turnos-keystore.jks keystore_base64.txt
+type keystore_base64.txt
+```
+
+**macOS:**
+```bash
+base64 -i turnos-keystore.jks | pbcopy
+```
+
+**Linux / Git Bash:**
+```bash
+base64 -w0 turnos-keystore.jks > keystore_base64.txt
+cat keystore_base64.txt
+```
+
+Copia todo el contenido del archivo (o el texto del portapapeles).
+
+### 3️⃣ Crear GitHub Secrets
+
+Ve a tu repositorio en GitHub:
+1. **Settings** → **Secrets and variables** → **Actions**
+2. Haz clic en **New repository secret**
+3. Crea estos 4 secrets:
+
+| Secret | Valor |
+|--------|-------|
+| `ANDROID_KEYSTORE_BASE64` | Todo el contenido del archivo base64 (texto largo) |
+| `KEYSTORE_PASSWORD` | La contraseña del keystore que ingresaste |
+| `KEY_ALIAS` | `turnosapp` (o el alias que pusiste) |
+| `KEY_PASSWORD` | La contraseña de la key que ingresaste |
+
+![GitHub Secrets](https://docs.github.com/assets/cb-24647/mw-1440/images/help/repository/actions-secrets-settings.webp)
+
+### 4️⃣ ¡APK Firmada Automática!
+
+Cada vez que hagas **push a `main`**, GitHub Actions:
+1. Construye la app web
+2. Sincroniza con Capacitor
+3. Genera **APK Debug** (para pruebas)
+4. Si hay keystore configurado, genera:
+   - **APK Release firmada** (lista para instalar en cualquier dispositivo)
+   - **AAB Release** (para subir a Google Play Store)
+
+Para descargar:
+1. Ve a **Actions** → **Build Android APK**
+2. Selecciona el workflow más reciente
+3. Baja los artifacts:
+   - `TurnosApp-Debug` → para pruebas directas
+   - `TurnosApp-Release` → APK firmada lista para distribuir
+   - `TurnosApp-Release-AAB` → Para Google Play Store
+
+### ⚠️ Seguridad
+- **NUNCA** subas el archivo `.jks` al repositorio (está en `.gitignore`)
+- **NUNCA** compartas tus contraseñas del keystore
+- Guarda el archivo `.jks` en un lugar seguro (USB, gestor de contraseñas)
+- Si pierdes el keystore, **no podrás actualizar tu app en Play Store**
+
+---
+
 ## 👨‍💻 Autor
 
 **Gustavo Soto** — [@whustafree](https://github.com/whustafree)
