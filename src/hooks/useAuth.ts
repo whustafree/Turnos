@@ -29,6 +29,13 @@ export function useAuth() {
     if (error) throw error
   }, [])
 
+  const resetPassword = useCallback(async (email: string) => {
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: 'https://turnos-chile.vercel.app/update-password',
+    })
+    if (error) throw error
+  }, [])
+
   const logout = useCallback(async () => {
     localStorage.removeItem('turnos_local_data')
     await supabase.auth.signOut()
@@ -36,5 +43,5 @@ export function useAuth() {
 
   const userId = user?.id
 
-  return { user, loading, userId, login, signUp, logout }
+  return { user, loading, userId, login, signUp, resetPassword, logout }
 }

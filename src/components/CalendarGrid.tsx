@@ -98,17 +98,26 @@ export default function CalendarGrid({ year, month, turnos, onOpenDay }: Calenda
                       ADMIN
                     </div>
                   )}
-                  {data.tipo === 'turno' && data.turnos && (
-                    data.turnos.map((t, idx) => {
-                      let c = 't-dia'
-                      if (t.includes('noche')) c = 't-noche'
-                      if (t.includes('extra')) c = 't-extra'
-                      return (
-                        <span key={idx} className={`turno-badge ${c} w-full text-center`}>
-                          {t.replace('extra-', '').toUpperCase()}
-                        </span>
-                      )
-                    })
+                  {data.turnos && data.turnos.length > 0 && (
+                    data.turnos
+                      .filter((t) => !(t === 'dia' && data.tipo && data.tipo !== 'turno'))
+                      .map((t, idx) => {
+                        if (t === 'dia' && data.tipo === 'turno') {
+                          return (
+                            <span key={idx} className="turno-badge t-dia w-full text-center">
+                              DÍA
+                            </span>
+                          )
+                        }
+                        let c = 't-dia'
+                        if (t.includes('noche')) c = 't-noche'
+                        if (t.includes('extra')) c = 't-extra'
+                        return (
+                          <span key={idx} className={`turno-badge ${c} w-full text-center`}>
+                            {t.replace('extra-', '').toUpperCase()}
+                          </span>
+                        )
+                      })
                   )}
                 </div>
               )}

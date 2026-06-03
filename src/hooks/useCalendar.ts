@@ -10,7 +10,7 @@ import {
   agruparAusencias,
 } from '../lib/turnos'
 import { useOfflineSync } from './useOfflineSync'
-import type { TurnoTipo, TurnosData, PatronCiclo } from '../types'
+import type { TurnoTipo, TurnosData, DiaTurno, PatronCiclo } from '../types'
 import type { AusenciaGroup } from '../lib/turnos'
 
 interface PerfilData {
@@ -22,6 +22,63 @@ interface PerfilData {
   vacacionesSindicato: number
   vacacionesTotal: number
   patronActual: PatronCiclo | null
+}
+
+// ─── Normalizar datos del formato antiguo (vanilla JS) al nuevo ───
+function normalizarDatosTurnos(raw: Record<string, Record<string, Record<string, any>>>): TurnosData {
+  const result: TurnosData = {}
+  for (const y of Object.keys(raw)) {
+    const year = Number(y)
+    result[year] = {}
+    for (const m of Object.keys(raw[year])) {
+      const month = Number(m)
+      result[year][month] = {}
+      for (const d of Object.keys(raw[year][month])) {
+        const day = Number(d)
+        const entrada: any = raw[year][month][d]
+        if (!entrada || !entrada.turnos || !Array.isArray(entrada.turnos)) continue
+
+        const turnosRaw = entrada.turnos as string[]
+        let tipo = entrada.tipo as DiaTurno['tipo'] | undefined
+        let turnos = turnosRaw
+        let estado = entrada.estado
+        let locked = entrada.locked
+
+        // Detectar tipo por el contenido de turnos si no hay tipo explícito
+        if (!tipo) {
+          const hasWork = turnosRaw.some((t) => ['dia', 'noche', 'tarde', 'madrugada'].includes(t))
+          const hasExtra = turnosRaw.some((t) => t.startsWith('extra-'))
+          if (hasWork || hasExtra) {
+            tipo = 'turno'
+          }
+        }
+
+        // Normalizar "Admin" → "administrativo" con turnos ['dia']
+        if (turnosRaw.includes('Admin')) {
+          tipo = 'administrativo'
+          turnos = ['dia']
+          locked = true
+        }
+
+        // Normalizar "VAC" → "vacaciones" con turnos ['dia']
+        if (turnosRaw.includes('VAC')) {
+          tipo = 'vacaciones'
+          turnos = ['dia']
+        }
+
+        // Si no se pudo determinar tipo, ignorar
+        if (!tipo) continue
+
+        result[year][month][day] = {
+          turnos: turnos as TurnoTipo[],
+          tipo,
+          ...(estado ? { estado } : {}),
+          ...(locked ? { locked } : {}),
+        }
+      }
+    }
+  }
+  return result
 }
 
 export function useCalendar(userId: string | undefined) {
@@ -51,7 +108,8 @@ export function useCalendar(userId: string | undefined) {
       .then(({ data, error }) => {
         if (error) return
         if (data) {
-          setTurnos((data.datos_turnos as TurnosData) || {})
+          const raw = data.datos_turnos as Record<string, Record<string, Record<string, any>>>
+          setTurnos(normalizarDatosTurnos(raw) || {})
           if (data.datos_perfil) {
             setPerfil((prev) => ({
               ...prev,
