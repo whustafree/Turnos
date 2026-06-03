@@ -53,7 +53,9 @@ jobs:
 
       # ─── Sync Capacitor ───
       - name: Sync Capacitor
-        run: npx cap sync android
+        run: |
+          npx cap copy android
+          npx cap update android
 
       # ─── Decode Keystore ───
       - name: Decode Keystore
