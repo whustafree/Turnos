@@ -3,6 +3,8 @@ import { CICLOS_3X3 } from '../types'
 
 // ─── Storage Keys ───
 const STORAGE_KEY = 'turnos_local_data'
+const OLD_STORAGE_KEY = 'turnos'
+const OLD_PERFIL_KEY = 'turnos_perfil'
 const THEME_KEY = 'theme'
 
 // ─── Local Data Shape ───
@@ -31,12 +33,39 @@ export function saveLocalData(turnos: TurnosData, perfil: LocalData['perfil']) {
   }
 }
 
+// ─── Migrate from old storage format (vanilla JS) ───
+function migrarDatosViejos(): { turnos: TurnosData; perfil: LocalData['perfil'] } | null {
+  try {
+    const oldTurnos = localStorage.getItem(OLD_STORAGE_KEY)
+    const oldPerfil = localStorage.getItem(OLD_PERFIL_KEY)
+    if (!oldTurnos && !oldPerfil) return null
+
+    const turnos: TurnosData = oldTurnos ? JSON.parse(oldTurnos) : {}
+    const perfil = oldPerfil ? { ...defaultPerfil(), ...JSON.parse(oldPerfil) } : defaultPerfil()
+
+    // Save in new format
+    saveLocalData(turnos, perfil)
+
+    // Remove old keys
+    localStorage.removeItem(OLD_STORAGE_KEY)
+    localStorage.removeItem(OLD_PERFIL_KEY)
+
+    console.log('✅ Datos migrados del formato antiguo al nuevo')
+    return { turnos, perfil }
+  } catch {
+    return null
+  }
+}
+
 export function loadLocalData(): { turnos: TurnosData; perfil: LocalData['perfil'] } | null {
   try {
     const stored = localStorage.getItem(STORAGE_KEY)
-    if (!stored) return null
-    const parsed: LocalData = JSON.parse(stored)
-    return { turnos: parsed.turnos || {}, perfil: parsed.perfil || defaultPerfil() }
+    if (stored) {
+      const parsed: LocalData = JSON.parse(stored)
+      return { turnos: parsed.turnos || {}, perfil: parsed.perfil || defaultPerfil() }
+    }
+    // Try to migrate from old format
+    return migrarDatosViejos()
   } catch {
     return null
   }

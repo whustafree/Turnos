@@ -80,6 +80,8 @@ body {
 [data-theme="dark"] .t-dia { background-color: #78350f; color: #fef3c7; border-color: #92400e; }
 .t-noche { background-color: #e0e7ff; color: #3730a3; border: 1px solid #c7d2fe; }
 [data-theme="dark"] .t-noche { background-color: #312e81; color: #e0e7ff; border-color: #3730a3; }
+.t-extra { background-color: #fce7f3; color: #9d174d; border: 1px solid #fbcfe8; }
+[data-theme="dark"] .t-extra { background-color: #831843; color: #fbcfe8; border-color: #9d174d; }
 
 @keyframes slideUp {
   from { opacity: 0; transform: translateY(10px); }
