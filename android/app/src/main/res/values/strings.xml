@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">TurnosApp</string>
+    <string name="title_activity_main">TurnosApp</string>
+    <string name="package_name">com.turnos.app</string>
+    <string name="custom_url_scheme">com.turnos.app</string>
+</resources>
