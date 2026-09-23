@@ -181,7 +181,7 @@ export function obtenerDia(
 ): DiaTurno | undefined {
   const stored = turnos[year]?.[month]?.[day]
   if (stored) return stored
-  if (mesesBorrados?.includes(`${year}-${month}`)) return undefined
+  if (mesesBorrados?.includes('*') || mesesBorrados?.includes(`${year}-${month}`)) return undefined
   const auto = calcularTurnoOriginal(new Date(year, month, day), patronActual)
   if (auto) return { turnos: [auto], tipo: 'turno' }
   return undefined

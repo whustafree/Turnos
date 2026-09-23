@@ -204,6 +204,12 @@ describe('obtenerDia', () => {
     expect(obtenerDia({}, 2025, 0, 1, patron, ['2025-0'])).toBeUndefined()
   })
 
+  it('does not auto-generate any month after a full clear', () => {
+    const patron: PatronCiclo = { fechaInicio: '2025-01-01', cicloId: '10' }
+    expect(obtenerDia({}, 2025, 5, 1, patron, ['*'])).toBeUndefined()
+    expect(obtenerDia({}, 2025, 10, 15, patron, ['*'])).toBeUndefined()
+  })
+
   it('returns stored days even for a cleared month', () => {
     const turnos: TurnosData = { 2025: { 0: { 1: { turnos: ['noche'], tipo: 'turno' } } } }
     const dia = obtenerDia(turnos, 2025, 0, 1, null, ['2025-0'])

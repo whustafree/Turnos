@@ -225,7 +225,8 @@ export function useCalendar(userId: string | undefined) {
 
   const clearAll = useCallback(() => {
     const empty: TurnosData = {}
-    const newPerfil: PerfilData = { ...perfil, mesesBorrados: [] }
+    // '*' marca todos los meses como borrados para que el patrón no los repinte
+    const newPerfil: PerfilData = { ...perfil, mesesBorrados: ['*'] }
     setPerfil(newPerfil)
     setTurnos(empty)
     persist(empty, newPerfil)
@@ -290,11 +291,13 @@ export function useCalendar(userId: string | undefined) {
   const applyCiclo = useCallback(
     (fechaInicio: string, cicloId: string, year: number, month: number) => {
       const newPatron: PatronCiclo = { fechaInicio, cicloId }
-      // Al regenerar un mes, el patrón vuelve a mostrarse ahí
+      // Al regenerar un mes, el patrón vuelve a mostrarse ahí (se quita '*' y el mes concreto)
       const newPerfil: PerfilData = {
         ...perfil,
         patronActual: newPatron,
-        mesesBorrados: (perfil.mesesBorrados || []).filter((k) => k !== `${year}-${month}`),
+        mesesBorrados: (perfil.mesesBorrados || []).filter(
+          (k) => k !== '*' && k !== `${year}-${month}`
+        ),
       }
       setPerfil(newPerfil)
       setTurnos((prev) => {
