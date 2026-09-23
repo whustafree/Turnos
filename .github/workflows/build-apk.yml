@@ -29,6 +29,20 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      # ─── Compute version (0.1, 0.2, 0.3...) ───
+      - name: Compute version (0.N)
+        run: |
+          if [ "${{ github.event_name }}" = "push" ]; then
+            count=$(git tag -l 'v*' | wc -l)
+            next=$((count + 1))
+            echo "VERSION_CODE=$next" >> $GITHUB_ENV
+            echo "VERSION_NAME=0.$next" >> $GITHUB_ENV
+          else
+            echo "VERSION_CODE=0" >> $GITHUB_ENV
+            echo "VERSION_NAME=local-build" >> $GITHUB_ENV
+          fi
+          echo "Versión a construir: $VERSION_NAME (código $VERSION_CODE)"
+
       # ─── Setup Node ───
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -151,3 +165,12 @@ jobs:
           files: release-assets/*
           fail_on_unmatched_files: false
           token: ${{ secrets.GITHUB_TOKEN }}
+
+      # ─── Tag de versión (v0.N) en cada push a main ───
+      - name: Tag release version
+        if: github.event_name == 'push'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag -a "$VERSION_NAME" -m "Release $VERSION_NAME"
+          git push origin "$VERSION_NAME"
