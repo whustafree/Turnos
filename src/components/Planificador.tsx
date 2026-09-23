@@ -11,7 +11,7 @@ interface PlanificadorProps {
 }
 
 export default function Planificador({ year, month, activePattern, onApply, onNavigate }: PlanificadorProps) {
-  const [cicloId, setCicloId] = useState('1')
+  const [cicloId, setCicloId] = useState('10')
   const [fechaInicio, setFechaInicio] = useState('')
 
   const handleApply = () => {

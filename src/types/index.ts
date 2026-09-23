@@ -32,18 +32,25 @@ export interface PatronCiclo {
 }
 
 // ─── Ciclos 3x3 ───
-export const CICLOS_3X3: Record<string, TurnoTipo[]> = {
-  '1': ['dia', 'dia', 'dia'],
-  '2': ['noche', 'noche', 'noche'],
-  '3': ['dia', 'noche', 'dia'],
-  '4': ['noche', 'noche', 'dia'],
-  '5': ['noche', 'dia', 'noche'],
-  '6': ['dia', 'noche', 'noche'],
-  '7': ['dia', 'dia', 'noche'],
-  '9': ['noche', 'dia', 'dia'],
+// Cada ciclo es una secuencia de pasos; 'descanso' indica día libre.
+// El periodo puede variar (ej: 6 días para 3x3 simple, 12 días para el
+// régimen 3x3 real: 3 día → 3 descanso → 3 noche → 3 descanso).
+export type CicloPaso = TurnoTipo | 'descanso'
+
+export const CICLOS_3X3: Record<string, CicloPaso[]> = {
+  '10': ['dia', 'dia', 'dia', 'descanso', 'descanso', 'descanso', 'noche', 'noche', 'noche', 'descanso', 'descanso', 'descanso'],
+  '1': ['dia', 'dia', 'dia', 'descanso', 'descanso', 'descanso'],
+  '2': ['noche', 'noche', 'noche', 'descanso', 'descanso', 'descanso'],
+  '3': ['dia', 'noche', 'dia', 'descanso', 'descanso', 'descanso'],
+  '4': ['noche', 'noche', 'dia', 'descanso', 'descanso', 'descanso'],
+  '5': ['noche', 'dia', 'noche', 'descanso', 'descanso', 'descanso'],
+  '6': ['dia', 'noche', 'noche', 'descanso', 'descanso', 'descanso'],
+  '7': ['dia', 'dia', 'noche', 'descanso', 'descanso', 'descanso'],
+  '9': ['noche', 'dia', 'dia', 'descanso', 'descanso', 'descanso'],
 }
 
 export const CICLOS_LABELS: Record<string, string> = {
+  '10': '3x3 Real: Día-Desc-Noche-Desc (12 días)',
   '1': 'Solo Día (D-D-D)',
   '2': 'Solo Noche (N-N-N)',
   '3': 'Alternando (D-N-D)',

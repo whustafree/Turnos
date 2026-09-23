@@ -111,15 +111,17 @@ export function calcularTurnoOriginal(
   if (!patronActual) return null
   const { fechaInicio, cicloId } = patronActual
   const patronTrabajo = CICLOS_3X3[cicloId]
-  if (!patronTrabajo) return null
+  if (!patronTrabajo || patronTrabajo.length === 0) return null
 
   const [iy, im, id] = fechaInicio.split('-').map(Number)
   const startDate = new Date(iy, im - 1, id)
   if (fecha < startDate) return null
 
-  const pos = ((diffDias(fecha, startDate) % 6) + 6) % 6
-  if (pos < 3) return patronTrabajo[pos]
-  return null
+  const periodo = patronTrabajo.length
+  const pos = ((diffDias(fecha, startDate) % periodo) + periodo) % periodo
+  const paso = patronTrabajo[pos]
+  if (paso === 'descanso') return null
+  return paso
 }
 
 // ─── Aplicar Ciclo 3x3 ───
@@ -131,11 +133,12 @@ export function aplicarCiclo(
 ): TurnosData {
   const newTurnos = { ...turnos }
   const patronTrabajo = CICLOS_3X3[patronActual.cicloId]
-  if (!patronTrabajo) return newTurnos
+  if (!patronTrabajo || patronTrabajo.length === 0) return newTurnos
 
   const [iy, im, id] = patronActual.fechaInicio.split('-').map(Number)
   const startDate = new Date(iy, im - 1, id)
   const diasMes = new Date(year, month + 1, 0).getDate()
+  const periodo = patronTrabajo.length
 
   if (!newTurnos[year]) newTurnos[year] = {}
   if (!newTurnos[year][month]) newTurnos[year][month] = {}
@@ -145,19 +148,20 @@ export function aplicarCiclo(
     if (currentDate < startDate) continue
 
     const diffDays = diffDias(currentDate, startDate)
-    const pos = ((diffDays % 6) + 6) % 6
+    const pos = ((diffDays % periodo) + periodo) % periodo
+    const paso = patronTrabajo[pos]
 
     const existing = newTurnos[year][month][d]
     // No sobrescribir vacaciones ni administrativos (aprobados o pendientes)
     if (existing && existing.tipo !== 'turno') continue
 
-    if (pos < 3) {
+    if (paso === 'descanso') {
+      if (existing?.tipo === 'turno') delete newTurnos[year][month][d]
+    } else {
       newTurnos[year][month][d] = {
-        turnos: [patronTrabajo[pos]],
+        turnos: [paso],
         tipo: 'turno',
       }
-    } else if (existing?.tipo === 'turno') {
-      delete newTurnos[year][month][d]
     }
   }
 
