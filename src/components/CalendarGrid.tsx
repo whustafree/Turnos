@@ -8,12 +8,13 @@ interface CalendarGridProps {
   month: number
   turnos: TurnosData
   patronActual: PatronCiclo | null
+  mesesBorrados: string[]
   onOpenDay: (day: number) => void
 }
 
 const DAY_LABELS = ['LU', 'MA', 'MI', 'JU', 'VI', 'SA', 'DO']
 
-export default function CalendarGrid({ year, month, turnos, patronActual, onOpenDay }: CalendarGridProps) {
+export default function CalendarGrid({ year, month, turnos, patronActual, mesesBorrados, onOpenDay }: CalendarGridProps) {
   const calendar = useMemo(() => {
     const firstDay = (new Date(year, month, 1).getDay() + 6) % 7
     const totalDays = new Date(year, month + 1, 0).getDate()
@@ -31,7 +32,7 @@ export default function CalendarGrid({ year, month, turnos, patronActual, onOpen
     }
 
     for (let d = 1; d <= totalDays; d++) {
-      const data = obtenerDia(turnos, year, month, d, patronActual)
+      const data = obtenerDia(turnos, year, month, d, patronActual, mesesBorrados)
       const isToday =
         d === today.getDate() &&
         month === today.getMonth() &&

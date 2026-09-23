@@ -18,6 +18,7 @@ interface DashboardProps {
     vacacionesSindicato: number
     vacacionesTotal: number
     patronActual: { fechaInicio: string; cicloId: string } | null
+    mesesBorrados: string[]
   }
   onImport: (turnos: TurnosData, perfil: DashboardProps['profile']) => void
 }

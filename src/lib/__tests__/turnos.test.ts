@@ -196,6 +196,21 @@ describe('obtenerDia', () => {
     expect(obtenerDia({}, 2025, 1, 10, patron)).toBeUndefined()
   })
 
+  it('does not regenerate from the pattern for a cleared month', () => {
+    const patron: PatronCiclo = { fechaInicio: '2025-01-01', cicloId: '10' }
+    // Sin almacenamiento, el patrón genera 'dia' el 1.º de enero
+    expect(obtenerDia({}, 2025, 0, 1, patron)).toBeDefined()
+    // Con el mes marcado como borrado, no vuelve a auto-generarse
+    expect(obtenerDia({}, 2025, 0, 1, patron, ['2025-0'])).toBeUndefined()
+  })
+
+  it('returns stored days even for a cleared month', () => {
+    const turnos: TurnosData = { 2025: { 0: { 1: { turnos: ['noche'], tipo: 'turno' } } } }
+    const dia = obtenerDia(turnos, 2025, 0, 1, null, ['2025-0'])
+    expect(dia).toBeDefined()
+    expect(dia!.turnos).toEqual(['noche'])
+  })
+
   it('returns nothing without a pattern', () => {
     expect(obtenerDia({}, 2025, 0, 1, null)).toBeUndefined()
   })

@@ -23,6 +23,7 @@ interface PerfilData {
   vacacionesSindicato: number
   vacacionesTotal: number
   patronActual: PatronCiclo | null
+  mesesBorrados: string[]
 }
 
 // ─── Normalizar datos del formato antiguo (vanilla JS) al nuevo ───
@@ -202,12 +203,20 @@ export function useCalendar(userId: string | undefined) {
 
   const clearMonth = useCallback(
     (year: number, month: number) => {
+      const key = `${year}-${month}`
+      const newPerfil: PerfilData = {
+        ...perfil,
+        mesesBorrados: perfil.mesesBorrados?.includes(key)
+          ? perfil.mesesBorrados
+          : [...(perfil.mesesBorrados || []), key],
+      }
+      setPerfil(newPerfil)
       setTurnos((prev) => {
         const newTurnos = structuredClone(prev)
         if (newTurnos[year]) {
           delete newTurnos[year][month]
         }
-        persist(newTurnos, perfil)
+        persist(newTurnos, newPerfil)
         return newTurnos
       })
     },
@@ -216,8 +225,10 @@ export function useCalendar(userId: string | undefined) {
 
   const clearAll = useCallback(() => {
     const empty: TurnosData = {}
+    const newPerfil: PerfilData = { ...perfil, mesesBorrados: [] }
+    setPerfil(newPerfil)
     setTurnos(empty)
-    persist(empty, perfil)
+    persist(empty, newPerfil)
   }, [persist, perfil])
 
   const saveVacaciones = useCallback(
@@ -279,10 +290,15 @@ export function useCalendar(userId: string | undefined) {
   const applyCiclo = useCallback(
     (fechaInicio: string, cicloId: string, year: number, month: number) => {
       const newPatron: PatronCiclo = { fechaInicio, cicloId }
-      setPerfil((prev) => ({ ...prev, patronActual: newPatron }))
+      // Al regenerar un mes, el patrón vuelve a mostrarse ahí
+      const newPerfil: PerfilData = {
+        ...perfil,
+        patronActual: newPatron,
+        mesesBorrados: (perfil.mesesBorrados || []).filter((k) => k !== `${year}-${month}`),
+      }
+      setPerfil(newPerfil)
       setTurnos((prev) => {
         const newTurnos = aplicarCiclo(prev, year, month, newPatron)
-        const newPerfil = { ...perfil, patronActual: newPatron }
         persist(newTurnos, newPerfil)
         return newTurnos
       })

@@ -20,6 +20,7 @@ interface LocalData {
     vacacionesSindicato: number
     vacacionesTotal: number
     patronActual: PatronCiclo | null
+    mesesBorrados: string[]
   }
   timestamp: number
 }
@@ -82,6 +83,7 @@ export function defaultPerfil(): LocalData['perfil'] {
     vacacionesSindicato: 2,
     vacacionesTotal: 17,
     patronActual: null,
+    mesesBorrados: [],
   }
 }
 
@@ -174,10 +176,12 @@ export function obtenerDia(
   year: number,
   month: number,
   day: number,
-  patronActual: PatronCiclo | null
+  patronActual: PatronCiclo | null,
+  mesesBorrados?: string[]
 ): DiaTurno | undefined {
   const stored = turnos[year]?.[month]?.[day]
   if (stored) return stored
+  if (mesesBorrados?.includes(`${year}-${month}`)) return undefined
   const auto = calcularTurnoOriginal(new Date(year, month, day), patronActual)
   if (auto) return { turnos: [auto], tipo: 'turno' }
   return undefined

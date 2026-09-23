@@ -11,6 +11,8 @@ interface ProfileModalProps {
     vacacionesLey: number
     vacacionesSindicato: number
     vacacionesTotal: number
+    patronActual: { fechaInicio: string; cicloId: string } | null
+    mesesBorrados: string[]
   }
   onSave: (data: Partial<ProfileModalProps['profile']>) => void
   onLogout: () => void

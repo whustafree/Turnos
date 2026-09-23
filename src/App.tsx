@@ -323,6 +323,7 @@ export default function App() {
             month={month}
             turnos={turnos}
             patronActual={perfil.patronActual}
+            mesesBorrados={perfil.mesesBorrados || []}
             onOpenDay={handleDayClick}
           />
         )}
