@@ -28,12 +28,14 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       # ─── Compute version (0.1, 0.2, 0.3...) ───
       - name: Compute version (0.N)
         run: |
           if [ "${{ github.event_name }}" = "push" ]; then
-            count=$(git tag -l 'v*' | wc -l)
+            count=$(git tag -l '0.*' | grep -v apk-latest | wc -l)
             next=$((count + 1))
             echo "VERSION_CODE=$next" >> $GITHUB_ENV
             echo "VERSION_NAME=0.$next" >> $GITHUB_ENV
