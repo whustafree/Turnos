@@ -201,28 +201,30 @@ describe('obtenerDia', () => {
   })
 })
 
-// ─── Ciclo 3x3 real (12 días: 3 día → 3 descanso → 3 noche → 3 descanso) ───
-describe('ciclo 3x3 real (12 días)', () => {
+// ─── Ciclo 3x3 real (15 días: 3 día → 3 descanso → 3 noche → 3 descanso → 3 noche) ───
+describe('ciclo 3x3 real (15 días)', () => {
   const patron: PatronCiclo = { fechaInicio: '2025-01-06', cicloId: '10' }
 
-  it('generates day block, then rest, then night block, then rest', () => {
-    // Jan 6-8 = día, 9-11 descanso, 12-14 noche, 15-17 descanso, then repeats
+  it('generates day block, rest, night, rest, night', () => {
+    // Jan 6-8 = día, 9-11 descanso, 12-14 noche, 15-17 descanso, 18-20 noche
     for (let d = 6; d <= 8; d++) expect(calcularTurnoOriginal(new Date(2025, 0, d), patron)).toBe('dia')
     for (let d = 9; d <= 11; d++) expect(calcularTurnoOriginal(new Date(2025, 0, d), patron)).toBeNull()
     for (let d = 12; d <= 14; d++) expect(calcularTurnoOriginal(new Date(2025, 0, d), patron)).toBe('noche')
     for (let d = 15; d <= 17; d++) expect(calcularTurnoOriginal(new Date(2025, 0, d), patron)).toBeNull()
+    for (let d = 18; d <= 20; d++) expect(calcularTurnoOriginal(new Date(2025, 0, d), patron)).toBe('noche')
   })
 
   it('repeats the cycle on the next block', () => {
-    // Jan 18 = day again (pos 0 of a new 12-day period)
-    expect(calcularTurnoOriginal(new Date(2025, 0, 18), patron)).toBe('dia')
-    expect(calcularTurnoOriginal(new Date(2025, 0, 20), patron)).toBe('dia')
+    // Jan 21 = position 0 of a new 15-day period → day block again
+    for (let d = 21; d <= 23; d++) expect(calcularTurnoOriginal(new Date(2025, 0, d), patron)).toBe('dia')
   })
 
   it('applies the cycle across month boundary', () => {
     const result = aplicarCiclo({}, 2025, 1, patron)
-    // Feb 12: diff from Jan 6 = 37 días → 37 % 12 = 1 → 'dia'
-    expect(result[2025]?.[1]?.[12]?.turnos).toEqual(['dia'])
+    // Feb 12: diff from Jan 6 = 37 días → 37 % 15 = 7 → 'noche'
+    expect(result[2025]?.[1]?.[12]?.turnos).toEqual(['noche'])
+    // Feb 14: diff = 39 → 39 % 15 = 9 → 'descanso' (no generado)
+    expect(result[2025]?.[1]?.[14]).toBeUndefined()
   })
 })
 

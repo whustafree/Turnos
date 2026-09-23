@@ -38,7 +38,7 @@ export interface PatronCiclo {
 export type CicloPaso = TurnoTipo | 'descanso'
 
 export const CICLOS_3X3: Record<string, CicloPaso[]> = {
-  '10': ['dia', 'dia', 'dia', 'descanso', 'descanso', 'descanso', 'noche', 'noche', 'noche', 'descanso', 'descanso', 'descanso'],
+  '10': ['dia', 'dia', 'dia', 'descanso', 'descanso', 'descanso', 'noche', 'noche', 'noche', 'descanso', 'descanso', 'descanso', 'noche', 'noche', 'noche'],
   '1': ['dia', 'dia', 'dia', 'descanso', 'descanso', 'descanso'],
   '2': ['noche', 'noche', 'noche', 'descanso', 'descanso', 'descanso'],
   '3': ['dia', 'noche', 'dia', 'descanso', 'descanso', 'descanso'],
@@ -50,7 +50,7 @@ export const CICLOS_3X3: Record<string, CicloPaso[]> = {
 }
 
 export const CICLOS_LABELS: Record<string, string> = {
-  '10': '3x3 Real: Día-Desc-Noche-Desc (12 días)',
+  '10': '3x3 Real: Día-Desc-Noche-Desc-Noche (15 días)',
   '1': 'Solo Día (D-D-D)',
   '2': 'Solo Noche (N-N-N)',
   '3': 'Alternando (D-N-D)',

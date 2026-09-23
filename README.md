@@ -15,8 +15,8 @@ Aplicación web progresiva (PWA) para gestionar turnos laborales con sistema **3
 ## ✨ Características
 
 ### 📅 Calendario de Turnos
-- Visualización mensual con sistema 3x3 real (12 días): 3 de día → 3 de descanso → 3 de noche → 3 de descanso
-- Ciclo especial **"3x3 Real" (Día-Desc-Noche-Desc)** ya incluido, más 8 configuraciones simples (D-D-D, N-N-N, D-N-D, etc.)
+- Visualización mensual con sistema 3x3 real (15 días): 3 de día → 3 de descanso → 3 de noche → 3 de descanso → 3 de noche
+- Ciclo especial **"3x3 Real" (Día-Desc-Noche-Desc-Noche)** ya incluido, más 8 configuraciones simples (D-D-D, N-N-N, D-N-D, etc.)
 - Asignación rápida de turnos: **DÍA**, **NOCHE**, **EXTRA DÍA**, **EXTRA NOCHE**
 - Auto-generación del mes siguiente con el mismo patrón
 - Días administrativos con contador y bloqueo automático
