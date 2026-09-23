@@ -40,7 +40,6 @@ export const CICLOS_3X3: Record<string, TurnoTipo[]> = {
   '5': ['noche', 'dia', 'noche'],
   '6': ['dia', 'noche', 'noche'],
   '7': ['dia', 'dia', 'noche'],
-  '8': ['dia', 'noche', 'dia'],
   '9': ['noche', 'dia', 'dia'],
 }
 
@@ -52,7 +51,6 @@ export const CICLOS_LABELS: Record<string, string> = {
   '5': 'Noche-Día-Noche (N-D-N)',
   '6': 'Día-Noche-Noche (D-N-N)',
   '7': 'Día-Día-Noche (D-D-N)',
-  '8': 'Día-Noche-Día (D-N-D)',
   '9': 'Noche-Día-Día (N-D-D)',
 }
 

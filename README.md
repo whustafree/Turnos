@@ -16,7 +16,7 @@ Aplicación web progresiva (PWA) para gestionar turnos laborales con sistema **3
 
 ### 📅 Calendario de Turnos
 - Visualización mensual con sistema 3x3 (3 días trabajo + 3 días descanso)
-- 9 configuraciones de ciclo disponibles (D-D-D, N-N-N, D-N-D, etc.)
+- 8 configuraciones de ciclo disponibles (D-D-D, N-N-N, D-N-D, etc.)
 - Asignación rápida de turnos: **DÍA**, **NOCHE**, **EXTRA DÍA**, **EXTRA NOCHE**
 - Días administrativos con contador y bloqueo automático
 - Días de vacaciones con estado aprobado/pendiente
@@ -48,7 +48,7 @@ Aplicación web progresiva (PWA) para gestionar turnos laborales con sistema **3
 ### 📱 PWA
 - Instalable como aplicación en Android, iOS, Windows y Mac
 - Service Worker con Workbox para carga instantánea
-- Cache de API de Supabase para funcionamiento offline parcial
+- Persistencia local con cola de sincronización offline
 - Auto-actualización al desplegar nueva versión
 
 ---

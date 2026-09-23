@@ -48,22 +48,6 @@ export default defineConfig({
         navigateFallbackDenylist: [/^\/api/],
         runtimeCaching: [
           {
-            // Supabase API: NetworkFirst with offline fallback
-            urlPattern: /^https:\/\/kjhrxdnwuwdmktdwuhdi\.supabase\.co\/rest\/v1\/.*/i,
-            handler: 'NetworkFirst',
-            options: {
-              cacheName: 'supabase-api',
-              expiration: {
-                maxEntries: 50,
-                maxAgeSeconds: 60 * 60 * 24, // 1 day
-              },
-              networkTimeoutSeconds: 5,
-              cacheableResponse: {
-                statuses: [0, 200],
-              },
-            },
-          },
-          {
             // Supabase Auth: NetworkOnly for security
             urlPattern: /^https:\/\/kjhrxdnwuwdmktdwuhdi\.supabase\.co\/auth\/.*/i,
             handler: 'NetworkOnly',

@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect, beforeEach, beforeAll } from 'vitest'
 import {
   defaultPerfil,
   calcularDashboardStats,
@@ -96,6 +96,19 @@ describe('calcularDashboardStats', () => {
     const stats = calcularDashboardStats(turnos, 2025, { adminTotal: 6, vacacionesLey: 15, vacacionesSindicato: 2, vacacionesTotal: 17 })
     expect(stats.vacacionesUsadas).toBe(0)
   })
+
+  it('excludes Chilean holidays from vacation count', () => {
+    // Wednesday Jan 1, 2025 = Año Nuevo (feriado), not a weekend
+    const turnos: TurnosData = {
+      2025: {
+        0: {
+          1: { turnos: ['dia'], tipo: 'vacaciones' },
+        },
+      },
+    }
+    const stats = calcularDashboardStats(turnos, 2025, { adminTotal: 6, vacacionesLey: 15, vacacionesSindicato: 2, vacacionesTotal: 17 })
+    expect(stats.vacacionesUsadas).toBe(0)
+  })
 })
 
 // ─── calcularTurnoOriginal ───
@@ -119,7 +132,30 @@ describe('calcularTurnoOriginal', () => {
   })
 })
 
-// ─── agruparAusencias ───
+// ─── calcularTurnoOriginal (horario de verano) ───
+describe('calcularTurnoOriginal (DST America/Santiago)', () => {
+  beforeAll(() => {
+    process.env.TZ = 'America/Santiago'
+  })
+
+  it('is not off-by-one across the spring DST transition', () => {
+    // Chile 2025: DST starts Sat Sep 6 at night → Sep 7 is a 23h day.
+    // Ciclo '4' = [noche, noche, día] → Sep 5=pos0(N), Sep 6(pos1), Sep 7=pos2(D), Sep 8=pos3 (descanso).
+    const patron: PatronCiclo = { fechaInicio: '2025-09-05', cicloId: '4' }
+    expect(calcularTurnoOriginal(new Date(2025, 8, 5), patron)).toBe('noche')
+    expect(calcularTurnoOriginal(new Date(2025, 8, 7), patron)).toBe('dia')
+    // Con Math.floor(ms/86400000) esto devolvía 'dia' (pos 2) en lugar de descanso.
+    expect(calcularTurnoOriginal(new Date(2025, 8, 8), patron)).toBeNull()
+  })
+
+  it('is not off-by-one across the autumn DST transition', () => {
+    // Chile 2025: DST ends Sat Apr 5 at night → Apr 6 is a 25h day.
+    const patron: PatronCiclo = { fechaInicio: '2025-04-04', cicloId: '1' }
+    expect(calcularTurnoOriginal(new Date(2025, 3, 4), patron)).toBe('dia')
+    expect(calcularTurnoOriginal(new Date(2025, 3, 5), patron)).toBe('dia')
+    expect(calcularTurnoOriginal(new Date(2025, 3, 6), patron)).toBe('dia')
+  })
+})
 describe('agruparAusencias', () => {
   it('returns empty array for no turnos', () => {
     expect(agruparAusencias({}, 2025)).toEqual([])

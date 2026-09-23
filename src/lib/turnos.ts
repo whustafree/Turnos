@@ -1,5 +1,6 @@
 import type { TurnoTipo, PatronCiclo, DiaTurno, TurnosData } from '../types'
 import { CICLOS_3X3 } from '../types'
+import { esDiaHabil } from './feriados'
 
 // ─── Storage Keys ───
 const STORAGE_KEY = 'turnos_local_data'
@@ -93,6 +94,15 @@ export function saveTheme(theme: 'light' | 'dark') {
   localStorage.setItem(THEME_KEY, theme)
 }
 
+// ─── Diferencia de días a prueba de horario de verano ───
+// Normaliza a mediodía UTC usando los campos de fecha LOCAL para que
+// los días de transición DST (23h/25h) no generen off-by-one.
+function diffDias(fecha: Date, base: Date): number {
+  const utcFecha = Date.UTC(fecha.getFullYear(), fecha.getMonth(), fecha.getDate())
+  const utcBase = Date.UTC(base.getFullYear(), base.getMonth(), base.getDate())
+  return Math.round((utcFecha - utcBase) / (1000 * 60 * 60 * 24))
+}
+
 // ─── Cálculo de Turno Original ───
 export function calcularTurnoOriginal(
   fecha: Date,
@@ -107,10 +117,7 @@ export function calcularTurnoOriginal(
   const startDate = new Date(iy, im - 1, id)
   if (fecha < startDate) return null
 
-  const diffDays = Math.floor(
-    (fecha.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)
-  )
-  const pos = ((diffDays % 6) + 6) % 6
+  const pos = ((diffDias(fecha, startDate) % 6) + 6) % 6
   if (pos < 3) return patronTrabajo[pos]
   return null
 }
@@ -137,9 +144,7 @@ export function aplicarCiclo(
     const currentDate = new Date(year, month, d)
     if (currentDate < startDate) continue
 
-    const diffDays = Math.floor(
-      (currentDate.getTime() - startDate.getTime()) / (1000 * 3600 * 24)
-    )
+    const diffDays = diffDias(currentDate, startDate)
     const pos = ((diffDays % 6) + 6) % 6
 
     const existing = newTurnos[year][month][d]
@@ -174,8 +179,7 @@ export function calcularDashboardStats(
         const fecha = new Date(year, Number(m), Number(d))
         if (diaData.tipo === 'administrativo') adminUsados++
         if (diaData.tipo === 'vacaciones') {
-          const diaSemana = fecha.getDay()
-          if (diaSemana !== 0 && diaSemana !== 6) vacUsados++
+          if (esDiaHabil(fecha)) vacUsados++
         }
       })
     })
@@ -232,8 +236,7 @@ export function agruparAusencias(turnos: TurnosData, year: number): AusenciaGrou
       let habiles = 0
       let loop = new Date(inicio)
       while (loop <= fin) {
-        const ds = loop.getDay()
-        if (ds !== 0 && ds !== 6) habiles++
+        if (esDiaHabil(loop)) habiles++
         loop.setDate(loop.getDate() + 1)
       }
       grupos.push({ inicio, fin, tipo: grupoActual[0].tipo, diasHabiles: habiles })
@@ -247,8 +250,7 @@ export function agruparAusencias(turnos: TurnosData, year: number): AusenciaGrou
   let habiles = 0
   let loop = new Date(inicio)
   while (loop <= fin) {
-    const ds = loop.getDay()
-    if (ds !== 0 && ds !== 6) habiles++
+    if (esDiaHabil(loop)) habiles++
     loop.setDate(loop.getDate() + 1)
   }
   grupos.push({ inicio, fin, tipo: grupoActual[0].tipo, diasHabiles: habiles })
@@ -313,8 +315,7 @@ export function generarCartaVacaciones(
   let habiles = 0
   let loop = new Date(startDate)
   while (loop <= endDate) {
-    const ds = loop.getDay()
-    if (ds !== 0 && ds !== 6) habiles++
+    if (esDiaHabil(loop)) habiles++
     loop.setDate(loop.getDate() + 1)
   }
 

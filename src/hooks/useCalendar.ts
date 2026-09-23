@@ -12,6 +12,7 @@ import {
 import { useOfflineSync } from './useOfflineSync'
 import type { TurnoTipo, TurnosData, DiaTurno, PatronCiclo } from '../types'
 import type { AusenciaGroup } from '../lib/turnos'
+import { getPendingOps } from './useOfflineSync'
 
 interface PerfilData {
   nombre: string
@@ -100,6 +101,10 @@ export function useCalendar(userId: string | undefined) {
 
   useEffect(() => {
     if (!userId) return
+    // Si hay cambios sin sincronizar en local, la nube está desactualizada:
+    // el re-sync de useOfflineSync subirá lo local al conectarse.
+    // Saltarse el fetch evita sobreescribir el estado con datos viejos (race).
+    if (getPendingOps().length > 0) return
     supabase
       .from('usuarios_turnos')
       .select('datos_turnos, datos_perfil')

@@ -11,7 +11,7 @@ interface PendingOperation {
 
 const PENDING_KEY = 'turnos_pending_ops'
 
-function getPendingOps(): PendingOperation[] {
+export function getPendingOps(): PendingOperation[] {
   try {
     const data = localStorage.getItem(PENDING_KEY)
     return data ? JSON.parse(data) : []

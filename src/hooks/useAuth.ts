@@ -38,6 +38,7 @@ export function useAuth() {
 
   const logout = useCallback(async () => {
     localStorage.removeItem('turnos_local_data')
+    localStorage.removeItem('turnos_pending_ops')
     await supabase.auth.signOut()
   }, [])
 
