@@ -188,12 +188,12 @@ describe('obtenerDia', () => {
 
   it('auto-generates turns from the pattern in any month', () => {
     const patron: PatronCiclo = { fechaInicio: '2025-01-01', cicloId: '10' }
-    // Feb 8 is 38 days after start → 38 % 15 = 8 → 'noche'
-    const feb8 = obtenerDia({}, 2025, 1, 8, patron)
-    expect(feb8).toBeDefined()
-    expect(feb8!.turnos).toEqual(['noche'])
-    // Feb 10 is position 10 → rest day, not generated
-    expect(obtenerDia({}, 2025, 1, 10, patron)).toBeUndefined()
+    // Feb 19 is 49 days after start → 49 % 18 = 13 → 'noche'
+    const feb19 = obtenerDia({}, 2025, 1, 19, patron)
+    expect(feb19).toBeDefined()
+    expect(feb19!.turnos).toEqual(['noche'])
+    // Feb 21 is position 15 → rest day, not generated
+    expect(obtenerDia({}, 2025, 1, 21, patron)).toBeUndefined()
   })
 
   it('does not regenerate from the pattern for a cleared month', () => {
@@ -222,29 +222,29 @@ describe('obtenerDia', () => {
   })
 })
 
-// ─── Ciclo 3x3 real (15 días: 3 día → 3 descanso → 3 noche → 3 descanso → 3 noche) ───
-describe('ciclo 3x3 real (15 días)', () => {
+// ─── Ciclo 3x3 real (18 días: 3 día → 3 descanso → 3 noche → 3 descanso → 3 noche → 3 descanso) ───
+describe('ciclo 3x3 real (18 días)', () => {
   const patron: PatronCiclo = { fechaInicio: '2025-01-06', cicloId: '10' }
 
-  it('generates day block, rest, night, rest, night', () => {
-    // Jan 6-8 = día, 9-11 descanso, 12-14 noche, 15-17 descanso, 18-20 noche
+  it('generates day block, rest, night, rest, night, rest', () => {
     for (let d = 6; d <= 8; d++) expect(calcularTurnoOriginal(new Date(2025, 0, d), patron)).toBe('dia')
     for (let d = 9; d <= 11; d++) expect(calcularTurnoOriginal(new Date(2025, 0, d), patron)).toBeNull()
     for (let d = 12; d <= 14; d++) expect(calcularTurnoOriginal(new Date(2025, 0, d), patron)).toBe('noche')
     for (let d = 15; d <= 17; d++) expect(calcularTurnoOriginal(new Date(2025, 0, d), patron)).toBeNull()
     for (let d = 18; d <= 20; d++) expect(calcularTurnoOriginal(new Date(2025, 0, d), patron)).toBe('noche')
+    for (let d = 21; d <= 23; d++) expect(calcularTurnoOriginal(new Date(2025, 0, d), patron)).toBeNull()
   })
 
   it('repeats the cycle on the next block', () => {
-    // Jan 21 = position 0 of a new 15-day period → day block again
-    for (let d = 21; d <= 23; d++) expect(calcularTurnoOriginal(new Date(2025, 0, d), patron)).toBe('dia')
+    // Jan 24 = position 0 of a new 18-day period → day block again
+    for (let d = 24; d <= 26; d++) expect(calcularTurnoOriginal(new Date(2025, 0, d), patron)).toBe('dia')
   })
 
   it('applies the cycle across month boundary', () => {
     const result = aplicarCiclo({}, 2025, 1, patron)
-    // Feb 12: diff from Jan 6 = 37 días → 37 % 15 = 7 → 'noche'
-    expect(result[2025]?.[1]?.[12]?.turnos).toEqual(['noche'])
-    // Feb 14: diff = 39 → 39 % 15 = 9 → 'descanso' (no generado)
+    // Feb 12: diff from Jan 6 = 37 días → 37 % 18 = 1 → 'dia'
+    expect(result[2025]?.[1]?.[12]?.turnos).toEqual(['dia'])
+    // Feb 14: diff = 39 → 39 % 18 = 3 → 'descanso' (no generado)
     expect(result[2025]?.[1]?.[14]).toBeUndefined()
   })
 })
