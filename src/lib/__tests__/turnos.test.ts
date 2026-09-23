@@ -120,15 +120,15 @@ describe('calcularTurnoOriginal', () => {
   })
 
   it('returns correct turno based on 3x3 cycle', () => {
-    const patron: PatronCiclo = { fechaInicio: '2025-01-01', cicloId: '1' } // D-D-D
+    const patron: PatronCiclo = { fechaInicio: '2025-01-01', cicloId: '10' }
     const date = new Date(2025, 0, 1) // Wednesday Jan 1
     const turno = calcularTurnoOriginal(date, patron)
     expect(turno).toBe('dia')
   })
 
-  it('returns null for rest days (positions 3-5 in 6-day cycle)', () => {
-    const patron: PatronCiclo = { fechaInicio: '2025-01-01', cicloId: '1' } // D-D-D
-    // Day 4 (Jan 4) = position 3 in 0-indexed 6-day cycle → rest day
+  it('returns null for rest days (positions 3-5 of the 3x3 cycle)', () => {
+    const patron: PatronCiclo = { fechaInicio: '2025-01-01', cicloId: '10' }
+    // Day 4 (Jan 4) = position 3 in 0-indexed 15-day cycle → rest day
     const date = new Date(2025, 0, 4)
     expect(calcularTurnoOriginal(date, patron)).toBeNull()
   })
@@ -142,9 +142,9 @@ describe('calcularTurnoOriginal (DST America/Santiago)', () => {
 
   it('is not off-by-one across the spring DST transition', () => {
     // Chile 2025: DST starts Sat Sep 6 at night → Sep 7 is a 23h day.
-    // Ciclo '4' = [noche, noche, día] → Sep 5=pos0(N), Sep 6(pos1), Sep 7=pos2(D), Sep 8=pos3 (descanso).
-    const patron: PatronCiclo = { fechaInicio: '2025-09-05', cicloId: '4' }
-    expect(calcularTurnoOriginal(new Date(2025, 8, 5), patron)).toBe('noche')
+    // Ciclo '10' = día, día, día, descanso... → Sep 5=pos0, Sep 7=pos2 (día), Sep 8=pos3 (descanso).
+    const patron: PatronCiclo = { fechaInicio: '2025-09-05', cicloId: '10' }
+    expect(calcularTurnoOriginal(new Date(2025, 8, 5), patron)).toBe('dia')
     expect(calcularTurnoOriginal(new Date(2025, 8, 7), patron)).toBe('dia')
     // Con Math.floor(ms/86400000) esto devolvía 'dia' (pos 2) en lugar de descanso.
     expect(calcularTurnoOriginal(new Date(2025, 8, 8), patron)).toBeNull()
@@ -152,7 +152,7 @@ describe('calcularTurnoOriginal (DST America/Santiago)', () => {
 
   it('is not off-by-one across the autumn DST transition', () => {
     // Chile 2025: DST ends Sat Apr 5 at night → Apr 6 is a 25h day.
-    const patron: PatronCiclo = { fechaInicio: '2025-04-04', cicloId: '1' }
+    const patron: PatronCiclo = { fechaInicio: '2025-04-04', cicloId: '10' }
     expect(calcularTurnoOriginal(new Date(2025, 3, 4), patron)).toBe('dia')
     expect(calcularTurnoOriginal(new Date(2025, 3, 5), patron)).toBe('dia')
     expect(calcularTurnoOriginal(new Date(2025, 3, 6), patron)).toBe('dia')
@@ -164,7 +164,7 @@ describe('aplicarCiclo', () => {
     const turnos: TurnosData = {
       2025: { 0: { 1: { turnos: ['dia'], tipo: 'vacaciones', estado: 'pendiente' } } },
     }
-    const result = aplicarCiclo(turnos, 2025, 0, { fechaInicio: '2025-01-01', cicloId: '1' })
+    const result = aplicarCiclo(turnos, 2025, 0, { fechaInicio: '2025-01-01', cicloId: '10' })
     expect(result[2025][0][1].tipo).toBe('vacaciones')
   })
 
@@ -172,7 +172,7 @@ describe('aplicarCiclo', () => {
     const turnos: TurnosData = {
       2025: { 0: { 1: { turnos: ['noche'], tipo: 'turno' } } },
     }
-    const result = aplicarCiclo(turnos, 2025, 0, { fechaInicio: '2025-01-01', cicloId: '1' })
+    const result = aplicarCiclo(turnos, 2025, 0, { fechaInicio: '2025-01-01', cicloId: '10' })
     expect(result[2025][0][1].turnos).toEqual(['dia'])
   })
 })
@@ -187,13 +187,13 @@ describe('obtenerDia', () => {
   })
 
   it('auto-generates turns from the pattern in any month', () => {
-    const patron: PatronCiclo = { fechaInicio: '2025-01-01', cicloId: '4' } // N-N-D
-    // Feb 1 is 31 days after start → position 1 → 'noche'
-    const feb1 = obtenerDia({}, 2025, 1, 1, patron)
-    expect(feb1).toBeDefined()
-    expect(feb1!.turnos).toEqual(['noche'])
-    // Feb 3 is position 3 → rest day, not generated
-    expect(obtenerDia({}, 2025, 1, 3, patron)).toBeUndefined()
+    const patron: PatronCiclo = { fechaInicio: '2025-01-01', cicloId: '10' }
+    // Feb 8 is 38 days after start → 38 % 15 = 8 → 'noche'
+    const feb8 = obtenerDia({}, 2025, 1, 8, patron)
+    expect(feb8).toBeDefined()
+    expect(feb8!.turnos).toEqual(['noche'])
+    // Feb 10 is position 10 → rest day, not generated
+    expect(obtenerDia({}, 2025, 1, 10, patron)).toBeUndefined()
   })
 
   it('returns nothing without a pattern', () => {
@@ -225,6 +225,22 @@ describe('ciclo 3x3 real (15 días)', () => {
     expect(result[2025]?.[1]?.[12]?.turnos).toEqual(['noche'])
     // Feb 14: diff = 39 → 39 % 15 = 9 → 'descanso' (no generado)
     expect(result[2025]?.[1]?.[14]).toBeUndefined()
+  })
+})
+
+// ─── Ciclo 4x4 (12 días: 4 día → 4 descanso → 4 noche → se repite) ───
+describe('ciclo 4x4 (12 días)', () => {
+  const patron: PatronCiclo = { fechaInicio: '2025-02-03', cicloId: '4x4' }
+
+  it('generates day, rest and night blocks', () => {
+    for (let d = 3; d <= 6; d++) expect(calcularTurnoOriginal(new Date(2025, 1, d), patron)).toBe('dia')
+    for (let d = 7; d <= 10; d++) expect(calcularTurnoOriginal(new Date(2025, 1, d), patron)).toBeNull()
+    for (let d = 11; d <= 14; d++) expect(calcularTurnoOriginal(new Date(2025, 1, d), patron)).toBe('noche')
+  })
+
+  it('repeats with the day block after the night block', () => {
+    // Feb 15 = 12 days after start → position 0 of the next period → day again
+    for (let d = 15; d <= 18; d++) expect(calcularTurnoOriginal(new Date(2025, 1, d), patron)).toBe('dia')
   })
 })
 
