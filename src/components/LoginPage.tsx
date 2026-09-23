@@ -1,9 +1,40 @@
 import { useState } from 'react'
 import { useAuth } from '../hooks/useAuth'
-import { Box, Mail, Key, Loader } from 'lucide-react'
+import { Box, Mail, Key, Loader, AlertTriangle } from 'lucide-react'
 
 interface LoginPageProps {
   onError: (msg: string) => void
+}
+
+function mensajeError(e: unknown): string {
+  const err: any = e
+  const code = err?.code as string | undefined
+  const message = typeof err?.message === 'string' ? err.message : ''
+  const msg = message.toLowerCase()
+  if (code === 'invalid_credentials' || msg.includes('invalid login credentials') || msg.includes('invalid email or password') || msg.includes('user not found') || msg.includes('wrong password')) {
+    return 'Correo o contraseña incorrectos. Verifica e intenta de nuevo.'
+  }
+  if (msg.includes('email not confirmed') || code === 'email_not_confirmed') {
+    return 'Correo no confirmado. Revisa tu bandeja de entrada para confirmarlo.'
+  }
+  if (msg.includes('user already registered') || code === 'user_already_exists') {
+    return 'Ese correo ya tiene una cuenta. Inicia sesión o restablece tu contraseña.'
+  }
+  if (msg.includes('rate limit') || msg.includes('too many requests')) {
+    return 'Demasiados intentos. Espera unos minutos antes de volver a intentar.'
+  }
+  return message || 'Error. Intenta de nuevo.'
+}
+
+function ErrorBox({ msg }: { msg: string | null }) {
+  if (!msg) return null
+  return (
+    <div className="w-full flex items-center gap-2 p-3 mb-4 rounded-xl text-sm font-semibold"
+      style={{ backgroundColor: 'rgba(239, 68, 68, 0.12)', color: '#ef4444', border: '1px solid rgba(239, 68, 68, 0.35)' }}>
+      <AlertTriangle className="w-4 h-4 shrink-0" />
+      <span className="text-left">{msg}</span>
+    </div>
+  )
 }
 
 export default function LoginPage({ onError }: LoginPageProps) {
@@ -13,14 +44,17 @@ export default function LoginPage({ onError }: LoginPageProps) {
   const [loading, setLoading] = useState(false)
   const [mode, setMode] = useState<'login' | 'signup' | 'reset'>('login')
   const [resetSent, setResetSent] = useState(false)
+  const [loginError, setLoginError] = useState<string | null>(null)
 
   const handleLogin = async () => {
+    setLoginError(null)
     if (!email || !password) return
     setLoading(true)
     try {
       await login(email, password)
     } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : 'Error al iniciar sesión'
+      const msg = mensajeError(e)
+      setLoginError(msg)
       onError(msg)
     } finally {
       setLoading(false)
@@ -28,8 +62,10 @@ export default function LoginPage({ onError }: LoginPageProps) {
   }
 
   const handleSignUp = async () => {
+    setLoginError(null)
     if (!email || !password) return
     if (password.length < 6) {
+      setLoginError('La contraseña debe tener al menos 6 caracteres')
       onError('La contraseña debe tener al menos 6 caracteres')
       return
     }
@@ -39,7 +75,8 @@ export default function LoginPage({ onError }: LoginPageProps) {
       alert('✅ Cuenta creada. Revisa tu correo para verificar.')
       setMode('login')
     } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : 'Error al crear cuenta'
+      const msg = mensajeError(e)
+      setLoginError(msg)
       onError(msg)
     } finally {
       setLoading(false)
@@ -47,7 +84,9 @@ export default function LoginPage({ onError }: LoginPageProps) {
   }
 
   const handleResetPassword = async () => {
+    setLoginError(null)
     if (!email) {
+      setLoginError('Ingresa tu correo primero')
       onError('Ingresa tu correo primero')
       return
     }
@@ -55,9 +94,11 @@ export default function LoginPage({ onError }: LoginPageProps) {
     try {
       await resetPassword(email)
       setResetSent(true)
+      setLoginError(null)
       onError('✅ Revisa tu correo. Te enviamos el enlace para restablecer.')
     } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : 'Error al enviar correo'
+      const msg = mensajeError(e)
+      setLoginError(msg)
       onError(msg)
     } finally {
       setLoading(false)
@@ -104,7 +145,7 @@ export default function LoginPage({ onError }: LoginPageProps) {
                 type="email"
                 placeholder="Tu correo electrónico"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={(e) => { setEmail(e.target.value); setLoginError(null) }}
                 onKeyDown={(e) => e.key === 'Enter' && handleResetPassword()}
                 className="w-full p-4 mb-6 rounded-xl text-lg outline-none"
                 style={{
@@ -114,6 +155,8 @@ export default function LoginPage({ onError }: LoginPageProps) {
                 }}
                 autoFocus
               />
+
+              <ErrorBox msg={loginError} />
 
               <button
                 onClick={handleResetPassword}
@@ -157,7 +200,7 @@ export default function LoginPage({ onError }: LoginPageProps) {
             type="email"
             placeholder="Correo"
             value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            onChange={(e) => { setEmail(e.target.value); setLoginError(null) }}
             className="w-full p-4 mb-3 rounded-xl text-lg outline-none"
             style={{
               backgroundColor: 'var(--bg-body)',
@@ -170,7 +213,7 @@ export default function LoginPage({ onError }: LoginPageProps) {
             type="password"
             placeholder="Contraseña (mín. 6 caracteres)"
             value={password}
-            onChange={(e) => setPassword(e.target.value)}
+            onChange={(e) => { setPassword(e.target.value); setLoginError(null) }}
             onKeyDown={(e) => e.key === 'Enter' && handleSignUp()}
             className="w-full p-4 mb-6 rounded-xl text-lg outline-none"
             style={{
@@ -179,6 +222,8 @@ export default function LoginPage({ onError }: LoginPageProps) {
               color: 'var(--text-main)',
             }}
           />
+
+          <ErrorBox msg={loginError} />
 
           <button
             onClick={handleSignUp}
@@ -218,7 +263,7 @@ export default function LoginPage({ onError }: LoginPageProps) {
           type="email"
           placeholder="Correo"
           value={email}
-          onChange={(e) => setEmail(e.target.value)}
+          onChange={(e) => { setEmail(e.target.value); setLoginError(null) }}
           className="w-full p-4 mb-3 rounded-xl text-lg outline-none"
           style={{
             backgroundColor: 'var(--bg-body)',
@@ -231,7 +276,7 @@ export default function LoginPage({ onError }: LoginPageProps) {
           type="password"
           placeholder="Contraseña"
           value={password}
-          onChange={(e) => setPassword(e.target.value)}
+          onChange={(e) => { setPassword(e.target.value); setLoginError(null) }}
           onKeyDown={(e) => e.key === 'Enter' && handleLogin()}
           className="w-full p-4 mb-4 rounded-xl text-lg outline-none"
           style={{
@@ -240,6 +285,8 @@ export default function LoginPage({ onError }: LoginPageProps) {
             color: 'var(--text-main)',
           }}
         />
+
+        <ErrorBox msg={loginError} />
 
         <button
           onClick={handleLogin}
