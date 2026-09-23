@@ -311,7 +311,12 @@ export default function App() {
           <Planificador
             year={year}
             month={month}
+            activePattern={perfil.patronActual}
             onApply={applyCiclo}
+            onNavigate={(y, m) => {
+              setYear(y)
+              setMonth(m)
+            }}
           />
         )}
 

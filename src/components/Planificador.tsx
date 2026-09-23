@@ -1,13 +1,16 @@
 import { useState } from 'react'
 import { CICLOS_LABELS } from '../types'
+import type { PatronCiclo } from '../types'
 
 interface PlanificadorProps {
   year: number
   month: number
+  activePattern: PatronCiclo | null
   onApply: (fechaInicio: string, cicloId: string, year: number, month: number) => void
+  onNavigate: (year: number, month: number) => void
 }
 
-export default function Planificador({ year, month, onApply }: PlanificadorProps) {
+export default function Planificador({ year, month, activePattern, onApply, onNavigate }: PlanificadorProps) {
   const [cicloId, setCicloId] = useState('1')
   const [fechaInicio, setFechaInicio] = useState('')
 
@@ -15,6 +18,26 @@ export default function Planificador({ year, month, onApply }: PlanificadorProps
     if (!fechaInicio) return alert('Selecciona fecha')
     onApply(fechaInicio, cicloId, year, month)
     alert('Ciclo aplicado.')
+  }
+
+  const handleGenerateNextMonth = () => {
+    if (!activePattern) return
+    const [iy, im, id] = activePattern.fechaInicio.split('-').map(Number)
+    const startDate = new Date(iy, im - 1, id)
+
+    let ny = year
+    let nm = month + 1
+    if (nm > 11) {
+      nm = 0
+      ny++
+    }
+
+    const lastDay = new Date(ny, nm + 1, 0)
+    if (lastDay < startDate) return alert('El patrón aún no inicia en ese mes.')
+
+    onApply(activePattern.fechaInicio, activePattern.cicloId, ny, nm)
+    onNavigate(ny, nm)
+    alert('Mes siguiente generado con el mismo patrón.')
   }
 
   return (
@@ -75,6 +98,20 @@ export default function Planificador({ year, month, onApply }: PlanificadorProps
         >
           APLICAR CICLO
         </button>
+
+        {activePattern && (
+          <button
+            onClick={handleGenerateNextMonth}
+            className="w-full py-4 font-bold rounded-xl transition"
+            style={{
+              backgroundColor: 'rgba(16, 185, 129, 0.1)',
+              color: '#059669',
+              border: '2px solid rgba(16, 185, 129, 0.3)',
+            }}
+          >
+            AUTO-GENERAR MES SIGUIENTE ►
+          </button>
+        )}
       </div>
     </div>
   )
