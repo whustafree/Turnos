@@ -200,6 +200,26 @@ export function useCalendar(userId: string | undefined) {
     [persist, perfil]
   )
 
+  const clearMonth = useCallback(
+    (year: number, month: number) => {
+      setTurnos((prev) => {
+        const newTurnos = structuredClone(prev)
+        if (newTurnos[year]) {
+          delete newTurnos[year][month]
+        }
+        persist(newTurnos, perfil)
+        return newTurnos
+      })
+    },
+    [persist, perfil]
+  )
+
+  const clearAll = useCallback(() => {
+    const empty: TurnosData = {}
+    setTurnos(empty)
+    persist(empty, perfil)
+  }, [persist, perfil])
+
   const saveVacaciones = useCallback(
     (startDate: Date, endDate: Date, aprobado: boolean) => {
       setTurnos((prev) => {
@@ -332,6 +352,8 @@ export function useCalendar(userId: string | undefined) {
     addTurno,
     marcarAdmin,
     removeTurno,
+    clearMonth,
+    clearAll,
     saveVacaciones,
     eliminarPeriodo,
     applyCiclo,

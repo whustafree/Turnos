@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useRef, useCallback } from 'react'
-import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Trash2 } from 'lucide-react'
 import { useAuth } from './hooks/useAuth'
 import { useCalendar } from './hooks/useCalendar'
 import type { TurnoTipo, TurnosData } from './types'
@@ -31,6 +31,8 @@ export default function App() {
     addTurno,
     marcarAdmin,
     removeTurno,
+    clearMonth,
+    clearAll,
     saveVacaciones,
     eliminarPeriodo,
     applyCiclo,
@@ -126,6 +128,16 @@ export default function App() {
   const handleRemoveTurno = (y: number, m: number, d: number) => {
     removeTurno(y, m, d)
     setShowTurnoModal(false)
+  }
+
+  const handleClearMonth = () => {
+    if (!confirm(`¿Borrar todos los turnos de ${monthLabel}?`)) return
+    clearMonth(year, month)
+  }
+
+  const handleClearAll = () => {
+    if (!confirm('¿Borrar TODOS los turnos de la aplicación? Esta acción no se puede deshacer.')) return
+    clearAll()
   }
 
   const handleDeletePeriod = (inicioStr: string, finStr: string) => {
@@ -246,6 +258,14 @@ export default function App() {
           </div>
 
           <div className="flex gap-1 pr-2">
+            <button
+              onClick={handleClearMonth}
+              title="Borrar mes completo"
+              className="w-10 h-10 flex items-center justify-center rounded-lg transition"
+              style={{ color: '#ef4444' }}
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
             <select
               value={month}
               onChange={(e) => setMonth(Number(e.target.value))}
@@ -321,15 +341,29 @@ export default function App() {
         )}
 
         {activeTab === 'administrador' && (
-          <AdminConfigPanel
-            adminTotal={perfil.adminTotal}
-            vacacionesLey={perfil.vacacionesLey}
-            vacacionesSindicato={perfil.vacacionesSindicato}
-            vacacionesTotal={perfil.vacacionesTotal}
-            adminUsados={stats.adminUsados}
-            vacacionesUsadas={stats.vacacionesUsadas}
-            onSave={handleAdminSave}
-          />
+          <div className="space-y-4">
+            <AdminConfigPanel
+              adminTotal={perfil.adminTotal}
+              vacacionesLey={perfil.vacacionesLey}
+              vacacionesSindicato={perfil.vacacionesSindicato}
+              vacacionesTotal={perfil.vacacionesTotal}
+              adminUsados={stats.adminUsados}
+              vacacionesUsadas={stats.vacacionesUsadas}
+              onSave={handleAdminSave}
+            />
+
+            <button
+              onClick={handleClearAll}
+              className="w-full py-4 rounded-xl font-bold transition flex items-center justify-center gap-2"
+              style={{
+                color: '#ef4444',
+                border: '1px solid rgba(239, 68, 68, 0.3)',
+                backgroundColor: 'rgba(239, 68, 68, 0.05)',
+              }}
+            >
+              <Trash2 className="w-4 h-4" /> BORRAR TODOS LOS TURNOS
+            </button>
+          </div>
         )}
 
         {activeTab === 'ausencias' && (
