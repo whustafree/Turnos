@@ -148,7 +148,8 @@ export function aplicarCiclo(
     const pos = ((diffDays % 6) + 6) % 6
 
     const existing = newTurnos[year][month][d]
-    if (existing?.locked) continue
+    // No sobrescribir vacaciones ni administrativos (aprobados o pendientes)
+    if (existing && existing.tipo !== 'turno') continue
 
     if (pos < 3) {
       newTurnos[year][month][d] = {
@@ -161,6 +162,21 @@ export function aplicarCiclo(
   }
 
   return newTurnos
+}
+
+// ─── Obtener el día visible (guardado o auto-generado por el patrón 3x3) ───
+export function obtenerDia(
+  turnos: TurnosData,
+  year: number,
+  month: number,
+  day: number,
+  patronActual: PatronCiclo | null
+): DiaTurno | undefined {
+  const stored = turnos[year]?.[month]?.[day]
+  if (stored) return stored
+  const auto = calcularTurnoOriginal(new Date(year, month, day), patronActual)
+  if (auto) return { turnos: [auto], tipo: 'turno' }
+  return undefined
 }
 
 // ─── Dashboard Stats ───

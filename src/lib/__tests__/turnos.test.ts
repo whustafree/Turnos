@@ -7,6 +7,8 @@ import {
   generarCartaVacaciones,
   saveLocalData,
   loadLocalData,
+  aplicarCiclo,
+  obtenerDia,
 } from '../turnos'
 import type { TurnosData, PatronCiclo } from '../../types'
 
@@ -156,6 +158,49 @@ describe('calcularTurnoOriginal (DST America/Santiago)', () => {
     expect(calcularTurnoOriginal(new Date(2025, 3, 6), patron)).toBe('dia')
   })
 })
+// ─── aplicarCiclo ───
+describe('aplicarCiclo', () => {
+  it('keeps vacations when applying a cycle', () => {
+    const turnos: TurnosData = {
+      2025: { 0: { 1: { turnos: ['dia'], tipo: 'vacaciones', estado: 'pendiente' } } },
+    }
+    const result = aplicarCiclo(turnos, 2025, 0, { fechaInicio: '2025-01-01', cicloId: '1' })
+    expect(result[2025][0][1].tipo).toBe('vacaciones')
+  })
+
+  it('overwrites stored work days inside the cycle', () => {
+    const turnos: TurnosData = {
+      2025: { 0: { 1: { turnos: ['noche'], tipo: 'turno' } } },
+    }
+    const result = aplicarCiclo(turnos, 2025, 0, { fechaInicio: '2025-01-01', cicloId: '1' })
+    expect(result[2025][0][1].turnos).toEqual(['dia'])
+  })
+})
+
+// ─── obtenerDia (auto-generación) ───
+describe('obtenerDia', () => {
+  it('returns the stored day when present', () => {
+    const turnos: TurnosData = { 2025: { 0: { 1: { turnos: ['noche'], tipo: 'turno' } } } }
+    const dia = obtenerDia(turnos, 2025, 0, 1, null)
+    expect(dia).toBeDefined()
+    expect(dia!.turnos).toEqual(['noche'])
+  })
+
+  it('auto-generates turns from the pattern in any month', () => {
+    const patron: PatronCiclo = { fechaInicio: '2025-01-01', cicloId: '4' } // N-N-D
+    // Feb 1 is 31 days after start → position 1 → 'noche'
+    const feb1 = obtenerDia({}, 2025, 1, 1, patron)
+    expect(feb1).toBeDefined()
+    expect(feb1!.turnos).toEqual(['noche'])
+    // Feb 3 is position 3 → rest day, not generated
+    expect(obtenerDia({}, 2025, 1, 3, patron)).toBeUndefined()
+  })
+
+  it('returns nothing without a pattern', () => {
+    expect(obtenerDia({}, 2025, 0, 1, null)).toBeUndefined()
+  })
+})
+
 describe('agruparAusencias', () => {
   it('returns empty array for no turnos', () => {
     expect(agruparAusencias({}, 2025)).toEqual([])

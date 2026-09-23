@@ -1,17 +1,19 @@
 import { useMemo } from 'react'
-import type { TurnosData } from '../types'
+import type { TurnosData, PatronCiclo } from '../types'
 import { Lock } from 'lucide-react'
+import { obtenerDia } from '../lib/turnos'
 
 interface CalendarGridProps {
   year: number
   month: number
   turnos: TurnosData
+  patronActual: PatronCiclo | null
   onOpenDay: (day: number) => void
 }
 
 const DAY_LABELS = ['LU', 'MA', 'MI', 'JU', 'VI', 'SA', 'DO']
 
-export default function CalendarGrid({ year, month, turnos, onOpenDay }: CalendarGridProps) {
+export default function CalendarGrid({ year, month, turnos, patronActual, onOpenDay }: CalendarGridProps) {
   const calendar = useMemo(() => {
     const firstDay = (new Date(year, month, 1).getDay() + 6) % 7
     const totalDays = new Date(year, month + 1, 0).getDate()
@@ -29,7 +31,7 @@ export default function CalendarGrid({ year, month, turnos, onOpenDay }: Calenda
     }
 
     for (let d = 1; d <= totalDays; d++) {
-      const data = turnos[year]?.[month]?.[d]
+      const data = obtenerDia(turnos, year, month, d, patronActual)
       const isToday =
         d === today.getDate() &&
         month === today.getMonth() &&
@@ -38,7 +40,7 @@ export default function CalendarGrid({ year, month, turnos, onOpenDay }: Calenda
     }
 
     return days
-  }, [year, month, turnos])
+  }, [year, month, turnos, patronActual])
 
   return (
     <div className="animate-slide-up">

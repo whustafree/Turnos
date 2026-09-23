@@ -302,6 +302,7 @@ export default function App() {
             year={year}
             month={month}
             turnos={turnos}
+            patronActual={perfil.patronActual}
             onOpenDay={handleDayClick}
           />
         )}
