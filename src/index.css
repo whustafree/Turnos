@@ -95,15 +95,34 @@ body {
 ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 4px; }
 
 /* ─── Impresión / PDF del mes ─── */
+.print-month { display: none; }
+
 @media print {
   header,
-  .no-print,
-  .turno-badge { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-  header { display: none !important; }
+  .no-print { display: none !important; }
+  /* Solo imprime el área marcada (calendario o planilla) */
+  body * { visibility: hidden; }
+  .print-area, .print-area * { visibility: visible; }
+  .print-area { position: absolute; left: 0; top: 0; width: 100%; }
+  .print-month { display: block; text-align: center; font-weight: 800; font-size: 1.2rem; margin-bottom: 8px; color: #111827; }
   body { background: #ffffff !important; }
   .day { min-height: 70px; break-inside: avoid; background: #ffffff !important; border-color: #d1d5db !important; }
   .day.today { border-color: #2563eb !important; }
   .t-dia { background-color: #fef3c7 !important; color: #92400e !important; border-color: #fde68a !important; }
   .t-noche { background-color: #e0e7ff !important; color: #3730a3 !important; border-color: #c7d2fe !important; }
   .t-extra { background-color: #fce7f3 !important; color: #9d174d !important; border-color: #fbcfe8 !important; }
+}
+
+/* ─── Planilla del mes ─── */
+.planilla-tabla { border-collapse: collapse; table-layout: fixed; }
+.planilla-tabla th,
+.planilla-tabla td { border: 1px solid var(--border-color); }
+.planilla-tabla .pl-dia,
+.planilla-tabla .pl-celda { width: 26px; min-width: 26px; padding: 3px 1px; font-size: 10px; font-weight: 700; text-align: center; }
+.planilla-tabla .pl-nombre { position: sticky; left: 0; z-index: 1; min-width: 130px; max-width: 150px; padding: 3px 8px; font-size: 11px; text-align: left; background-color: var(--bg-card); border-right-width: 2px !important; }
+@media print {
+  .planilla-tabla th, .planilla-tabla td { border-color: #cbd5e1 !important; }
+  .planilla-tabla .pl-nombre { background-color: #ffffff !important; }
+  .print-resumen { break-inside: avoid; }
+  .print-resumen > div { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 }

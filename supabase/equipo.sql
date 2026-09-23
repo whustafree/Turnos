@@ -102,3 +102,69 @@ create policy "equipo lee turnos"
         )
     ) > 0
   );
+
+-- ─── Funciones RPC para el admin ───
+
+-- Crea un equipo y su dueño (miembro rol 'owner')
+create or replace function public.crear_equipo(p_nombre text)
+returns uuid
+language plpgsql security definer set search_path = public
+as $$
+declare v_equipo_id uuid;
+begin
+  insert into public.equipos (owner_user_id, nombre)
+  values (auth.uid(), coalesce(nullif(p_nombre, ''), 'Mi Equipo'))
+  returning id into v_equipo_id;
+
+  insert into public.miembros_equipo (equipo_id, user_id, rol, creado_por)
+  values (v_equipo_id, auth.uid(), 'owner', auth.uid());
+
+  return v_equipo_id;
+end $$;
+
+-- Agrega un miembro existente por su correo (solo el dueño del equipo)
+create or replace function public.agregar_miembro(p_equipo_id uuid, p_email text)
+returns uuid
+language plpgsql security definer set search_path = public
+as $$
+declare v_uid uuid;
+begin
+  if not exists (
+    select 1 from public.equipos e
+    where e.id = p_equipo_id and e.owner_user_id = auth.uid()
+  ) then
+    raise exception 'No eres el dueño de este equipo';
+  end if;
+
+  select id into v_uid from auth.users where lower(email) = lower(p_email);
+  if v_uid is null then
+    raise exception 'No existe una cuenta con ese correo: %', p_email;
+  end if;
+
+  insert into public.miembros_equipo (equipo_id, user_id, rol, creado_por)
+  values (p_equipo_id, v_uid, 'miembro', auth.uid())
+  on conflict (equipo_id, user_id) do nothing;
+
+  return v_uid;
+end $$;
+
+-- Quita un miembro del equipo (solo el dueño)
+create or replace function public.quitar_miembro(p_equipo_id uuid, p_user_id uuid)
+returns void
+language plpgsql security definer set search_path = public
+as $$
+begin
+  if not exists (
+    select 1 from public.equipos e
+    where e.id = p_equipo_id and e.owner_user_id = auth.uid()
+  ) then
+    raise exception 'No eres el dueño de este equipo';
+  end if;
+
+  delete from public.miembros_equipo
+  where equipo_id = p_equipo_id and user_id = p_user_id;
+end $$;
+
+-- Usuarios con invite: el correo ya debe tener cuenta (se registran en la app).
+-- Para crear la cuenta el admin usa el botón "Crear cuenta" dentro de la app,
+-- que llama a signUp con la clave pública (sin necesidad de role service).

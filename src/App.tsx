@@ -16,8 +16,9 @@ import VacacionesForm from './components/VacacionesForm'
 import AusenciasList from './components/AusenciasList'
 import Planificador from './components/Planificador'
 import AdminConfigPanel from './components/AdminConfigPanel'
+import EquipoTab from './components/EquipoTab'
 
-type Tab = 'calendario' | 'planificar' | 'ausencias' | 'administrador'
+type Tab = 'calendario' | 'planificar' | 'ausencias' | 'administrador' | 'equipo'
 
 export default function App() {
   const { user, loading: authLoading, userId, logout } = useAuth()
@@ -256,6 +257,7 @@ export default function App() {
       else if (e.key === '2') setActiveTab('planificar')
       else if (e.key === '3') setActiveTab('ausencias')
       else if (e.key === '4') setActiveTab('administrador')
+      else if (e.key === '5') setActiveTab('equipo')
     }
     window.addEventListener('keydown', handleKey)
     return () => window.removeEventListener('keydown', handleKey)
@@ -468,17 +470,18 @@ export default function App() {
         )}
 
         {/* ═══ TABS ═══ */}
-        <div className="grid grid-cols-4 gap-2">
+        <div className="grid grid-cols-5 gap-1.5">
           {([
             { id: 'calendario' as Tab, label: 'Calendario' },
             { id: 'planificar' as Tab, label: 'Planificar' },
             { id: 'ausencias' as Tab, label: 'Ausencias' },
             { id: 'administrador' as Tab, label: 'Admin' },
+            { id: 'equipo' as Tab, label: 'Equipo' },
           ]).map((tab) => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className="py-3 rounded-xl font-bold text-sm shadow-sm transition-all"
+              className="py-2.5 rounded-xl font-bold text-[11px] sm:text-sm shadow-sm transition-all"
               style={{
                 backgroundColor: 'var(--bg-card)',
                 border: `1px solid ${activeTab === tab.id ? 'var(--color-primary)' : 'var(--border-color)'}`,
@@ -493,6 +496,7 @@ export default function App() {
         {/* ═══ TAB CONTENT ═══ */}
         {activeTab === 'calendario' && (
           <div className="print-area">
+            <div className="print-month">{monthLabel}</div>
             <CalendarGrid
               year={year}
               month={month}
@@ -601,6 +605,8 @@ export default function App() {
             </div>
           </div>
         )}
+
+        {activeTab === 'equipo' && <EquipoTab />}
       </Layout>
 
       {/* ═══ TURNO MODAL ═══ */}

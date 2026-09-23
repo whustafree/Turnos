@@ -13,7 +13,9 @@ import {
   normalizarPerfil,
 } from '../turnos'
 import { esDiaHabil, esFeriado } from '../feriados'
-import type { TurnosData, PatronCiclo } from '../../types'
+import { construirPlanilla, celdaDeDia, resumenPorDia } from '../planilla'
+import type { TurnoTipo, TurnosData } from '../../types'
+import type { PatronCiclo } from '../../types'
 
 // ─── LocalStorage Mock ───
 const store: Record<string, string> = {}
@@ -288,6 +290,71 @@ describe('normalizarPerfil', () => {
     ]
     const norm = normalizarPerfil(p)
     expect(norm.patrones).toHaveLength(2)
+  })
+})
+
+// ─── Planilla del mes (quién trabaja cada día) ───
+describe('planilla', () => {
+  it('celdaDeDia mapea vacaciones, administrativo, noche y descanso', () => {
+    expect(celdaDeDia(undefined, 2026, 0, 1)).toBe('')
+
+    const datos: TurnosData = {
+      2026: {
+        0: {
+          1: { turnos: ['noche'] as TurnoTipo[], tipo: 'turno' as const },
+          2: { turnos: ['dia'] as TurnoTipo[], tipo: 'vacaciones' as const },
+          3: { turnos: ['dia'] as TurnoTipo[], tipo: 'administrativo' as const },
+          4: { turnos: [] as TurnoTipo[], tipo: 'turno' as const },
+          6: { turnos: ['noche', 'dia'] as TurnoTipo[], tipo: 'turno' as const },
+        },
+      },
+    }
+    expect(celdaDeDia(datos, 2026, 0, 1)).toBe('N')
+    expect(celdaDeDia(datos, 2026, 0, 2)).toBe('V')
+    expect(celdaDeDia(datos, 2026, 0, 3)).toBe('AD')
+    expect(celdaDeDia(datos, 2026, 0, 4)).toBe('')
+    expect(celdaDeDia(datos, 2026, 0, 6)).toBe('DN')
+  })
+
+  it('construirPlanilla ordena por nombre y cubre todos los días del mes', () => {
+    const planilla = construirPlanilla(
+      [
+        { id: 'b', nombre: 'Bruno', datos: {} },
+        { id: 'a', nombre: 'Ana', datos: {} },
+      ],
+      2026,
+      0
+    )
+    expect(planilla.totalDias).toBe(31)
+    expect(planilla.filas.map((f) => f.nombre)).toEqual(['Ana', 'Bruno'])
+    expect(planilla.filas[0].celdas).toHaveLength(31)
+  })
+
+  it('resumenPorDia cuenta quién trabaja el día 2', () => {
+    const planilla = construirPlanilla(
+      [
+        {
+          id: 'a',
+          nombre: 'Ana Perez',
+          datos: {
+            2026: { 0: { 2: { turnos: ['noche'] as TurnoTipo[], tipo: 'turno' as const } } },
+          },
+        },
+        {
+          id: 'b',
+          nombre: 'Bruno Diaz',
+          datos: {
+            2026: { 0: { 2: { turnos: ['dia'] as TurnoTipo[], tipo: 'turno' as const } } },
+          },
+        },
+      ],
+      2026,
+      0
+    )
+    const resumen = resumenPorDia(planilla)
+    expect(resumen[1].dia).toBe(2)
+    expect(resumen[1].conTurno).toEqual(['Ana Perez', 'Bruno Diaz'])
+    expect(resumen[1].turnos).toBe(2)
   })
 })
 

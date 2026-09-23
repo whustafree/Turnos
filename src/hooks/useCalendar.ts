@@ -88,7 +88,7 @@ function normalizarDatosTurnos(raw: Record<string, Record<string, Record<string,
 export function useCalendar(userId: string | undefined) {
   const [turnos, setTurnos] = useState<TurnosData>({})
   const [perfil, setPerfil] = useState<PerfilData>(defaultPerfil())
-  const [activeTab, setActiveTab] = useState<'calendario' | 'planificar' | 'ausencias' | 'administrador'>('calendario')
+  const [activeTab, setActiveTab] = useState<'calendario' | 'planificar' | 'ausencias' | 'administrador' | 'equipo'>('calendario')
   const [selectedDay, setSelectedDay] = useState<number | null>(null)
   const [showTurnoModal, setShowTurnoModal] = useState(false)
   const [showProfileModal, setShowProfileModal] = useState(false)
