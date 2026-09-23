@@ -3,7 +3,9 @@ import { ChevronLeft, ChevronRight, Trash2, Printer, Bell, BellRing } from 'luci
 import { useAuth } from './hooks/useAuth'
 import { useCalendar } from './hooks/useCalendar'
 import { obtenerDia } from './lib/turnos'
+import { isNative, nativeReminderEnabled, scheduleDailyReminder } from './lib/native'
 import type { TurnoTipo, TurnosData } from './types'
+import { CICLOS_LABELS } from './types'
 import LoginPage from './components/LoginPage'
 import Layout from './components/Layout'
 import Dashboard from './components/Dashboard'
@@ -37,6 +39,8 @@ export default function App() {
     saveVacaciones,
     eliminarPeriodo,
     applyCiclo,
+    switchPatron,
+    eliminarPatron,
     saveProfile,
     openDay,
     getDashboardStats,
@@ -88,6 +92,7 @@ export default function App() {
   // ─── Recordatorio del turno de HOY (notificación del navegador) ───
   const notifDateKey = today.toDateString()
   useEffect(() => {
+    if (isNative()) return // en APK usamos notificación nativa (08:00)
     if (typeof Notification === 'undefined') return
     const enabled = localStorage.getItem('turnos_notif') === '1'
     if (!enabled || Notification.permission !== 'granted') return
@@ -103,6 +108,16 @@ export default function App() {
   }, [hoyInfo.label, hoyInfo.isWork, notifDateKey])
 
   const handleEnableNotifications = async () => {
+    if (isNative()) {
+      const ok = await scheduleDailyReminder('Revisa tu turno de HOY en TurnosApp')
+      if (ok) {
+        localStorage.setItem('turnos_notif', '1')
+        showError('✅ Recordatorios activados: notificación a las 08:00 todos los días.')
+      } else {
+        showError('Notificaciones no permitidas')
+      }
+      return
+    }
     if (typeof Notification === 'undefined') {
       showError('Tu navegador no soporta notificaciones')
       return
@@ -270,11 +285,12 @@ export default function App() {
         {/* Error toast */}
         {errorMsg && (
           <div
-            className="fixed top-20 right-4 z-50 px-4 py-3 rounded-xl shadow-lg animate-slide-up text-sm font-semibold"
+            className="fixed right-4 z-50 px-4 py-3 rounded-xl shadow-lg animate-slide-up text-sm font-semibold"
             style={{
               backgroundColor: '#fef2f2',
               color: '#dc2626',
               border: '1px solid #fca5a5',
+              top: 'calc(5rem + env(safe-area-inset-top, 0px))',
             }}
           >
             {errorMsg}
@@ -374,6 +390,45 @@ export default function App() {
           </div>
         </div>
 
+        {/* ═══ MIS CICLOS (múltiples ciclos activos) ═══ */}
+        {(perfil.patrones || []).length > 0 && (
+          <div className="no-print flex flex-wrap items-center gap-2">
+            <span className="text-[10px] font-bold uppercase tracking-widest" style={{ color: 'var(--text-muted)' }}>
+              Ciclo activo:
+            </span>
+            {(perfil.patrones as { fechaInicio: string; cicloId: string }[]).map((p) => {
+              const active =
+                perfil.patronActual?.fechaInicio === p.fechaInicio &&
+                perfil.patronActual?.cicloId === p.cicloId
+              const label = CICLOS_LABELS[p.cicloId]
+              return (
+                <div key={`${p.cicloId}-${p.fechaInicio}`} className="flex items-center gap-1">
+                  <button
+                    onClick={() => switchPatron(p)}
+                    className="px-2.5 py-1.5 rounded-full text-[11px] font-bold transition border"
+                    style={{
+                      borderColor: active ? 'var(--color-primary)' : 'var(--border-color)',
+                      backgroundColor: active ? 'rgba(37, 99, 235, 0.12)' : 'var(--bg-card)',
+                      color: active ? 'var(--color-primary)' : 'var(--text-muted)',
+                    }}
+                    title={label}
+                  >
+                    {label ? label.split(':')[0] : p.cicloId} · {p.fechaInicio}
+                  </button>
+                  <button
+                    onClick={() => eliminarPatron(p)}
+                    className="w-5 h-5 flex items-center justify-center rounded-full text-[10px] font-bold"
+                    style={{ color: 'var(--text-muted)' }}
+                    title="Eliminar ciclo"
+                  >
+                    ×
+                  </button>
+                </div>
+              )
+            })}
+          </div>
+        )}
+
         {/* ═══ TURNO DE HOY + RECORDATORIO ═══ */}
         <div className="no-print flex items-center justify-between gap-2 p-3 rounded-xl border shadow-sm"
           style={{
@@ -455,7 +510,10 @@ export default function App() {
             year={year}
             month={month}
             activePattern={perfil.patronActual}
+            patrones={perfil.patrones || []}
             onApply={applyCiclo}
+            onSwitch={switchPatron}
+            onDelete={eliminarPatron}
             onNavigate={(y, m) => {
               setYear(y)
               setMonth(m)

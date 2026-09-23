@@ -10,6 +10,7 @@ import {
   loadLocalData,
   aplicarCiclo,
   obtenerDia,
+  normalizarPerfil,
 } from '../turnos'
 import { esDiaHabil, esFeriado } from '../feriados'
 import type { TurnosData, PatronCiclo } from '../../types'
@@ -265,6 +266,28 @@ describe('ciclo 4x4 (16 días)', () => {
   it('repeats with the day block after the final rest', () => {
     // Feb 19 = 16 days after start → position 0 of the next period → day again
     for (let d = 19; d <= 22; d++) expect(calcularTurnoOriginal(new Date(2025, 1, d), patron)).toBe('dia')
+  })
+})
+
+// ─── Múltiples ciclos (patrones) ───
+describe('normalizarPerfil', () => {
+  it('migrates a legacy perfil without patrones into patrones=[patronActual]', () => {
+    const p = defaultPerfil()
+    p.patronActual = { fechaInicio: '2025-01-06', cicloId: '10' }
+    const norm = normalizarPerfil(p)
+    expect(norm.patrones).toHaveLength(1)
+    expect(norm.patrones[0]).toEqual(p.patronActual)
+  })
+
+  it('keeps existing patrones untouched', () => {
+    const p = defaultPerfil()
+    p.patronActual = { fechaInicio: '2025-01-06', cicloId: '10' }
+    p.patrones = [
+      { fechaInicio: '2025-01-06', cicloId: '10' },
+      { fechaInicio: '2025-03-10', cicloId: '4x4' },
+    ]
+    const norm = normalizarPerfil(p)
+    expect(norm.patrones).toHaveLength(2)
   })
 })
 

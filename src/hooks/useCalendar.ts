@@ -4,6 +4,7 @@ import {
   saveLocalData,
   loadLocalData,
   defaultPerfil,
+  normalizarPerfil,
   calcularTurnoOriginal,
   aplicarCiclo,
   calcularDashboardStats,
@@ -23,6 +24,7 @@ interface PerfilData {
   vacacionesSindicato: number
   vacacionesTotal: number
   patronActual: PatronCiclo | null
+  patrones: PatronCiclo[]
   mesesBorrados: string[]
 }
 
@@ -97,7 +99,7 @@ export function useCalendar(userId: string | undefined) {
     const local = loadLocalData()
     if (local) {
       setTurnos(local.turnos || {})
-      setPerfil(local.perfil || defaultPerfil())
+      setPerfil(normalizarPerfil(local.perfil || defaultPerfil()))
     }
   }, [])
 
@@ -118,10 +120,8 @@ export function useCalendar(userId: string | undefined) {
           const raw = data.datos_turnos as Record<string, Record<string, Record<string, any>>>
           setTurnos(normalizarDatosTurnos(raw) || {})
           if (data.datos_perfil) {
-            setPerfil((prev) => ({
-              ...prev,
-              ...(data.datos_perfil as Partial<PerfilData>),
-            }))
+            const cloudPerfil = data.datos_perfil as Partial<PerfilData>
+            setPerfil((prev) => normalizarPerfil({ ...prev, ...cloudPerfil }))
           }
         }
       })
@@ -297,10 +297,18 @@ export function useCalendar(userId: string | undefined) {
   const applyCiclo = useCallback(
     (fechaInicio: string, cicloId: string, year: number, month: number) => {
       const newPatron: PatronCiclo = { fechaInicio, cicloId }
+      // Guarda el ciclo en la lista de patrones (multiples ciclos activos)
+      const existe = (perfil.patrones || []).some(
+        (p) => p.fechaInicio === fechaInicio && p.cicloId === cicloId
+      )
+      const patrones = existe
+        ? perfil.patrones
+        : [...(perfil.patrones || []), newPatron]
       // Al regenerar un mes, el patrón vuelve a mostrarse ahí (se quita '*' y el mes concreto)
       const newPerfil: PerfilData = {
         ...perfil,
         patronActual: newPatron,
+        patrones,
         mesesBorrados: (perfil.mesesBorrados || []).filter(
           (k) => k !== '*' && k !== `${year}-${month}`
         ),
@@ -313,6 +321,35 @@ export function useCalendar(userId: string | undefined) {
       })
     },
     [persist, perfil]
+  )
+
+  const switchPatron = useCallback(
+    (patron: PatronCiclo) => {
+      const newPerfil: PerfilData = { ...perfil, patronActual: patron }
+      setPerfil(newPerfil)
+      persist(turnos, newPerfil)
+    },
+    [persist, perfil, turnos]
+  )
+
+  const eliminarPatron = useCallback(
+    (patron: PatronCiclo) => {
+      const patrones = (perfil.patrones || []).filter(
+        (p) => !(p.fechaInicio === patron.fechaInicio && p.cicloId === patron.cicloId)
+      )
+      const esActivo =
+        perfil.patronActual &&
+        perfil.patronActual.fechaInicio === patron.fechaInicio &&
+        perfil.patronActual.cicloId === patron.cicloId
+      const newPerfil: PerfilData = {
+        ...perfil,
+        patrones,
+        patronActual: esActivo ? (patrones[0] ?? null) : perfil.patronActual,
+      }
+      setPerfil(newPerfil)
+      persist(turnos, newPerfil)
+    },
+    [persist, perfil, turnos]
   )
 
   const saveProfile = useCallback(
@@ -382,6 +419,8 @@ export function useCalendar(userId: string | undefined) {
     saveVacaciones,
     eliminarPeriodo,
     applyCiclo,
+    switchPatron,
+    eliminarPatron,
     saveProfile,
     openDay,
     getDashboardStats,

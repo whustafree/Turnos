@@ -21,6 +21,7 @@ interface LocalData {
     vacacionesTotal: number
     patronActual: PatronCiclo | null
     mesesBorrados: string[]
+    patrones: PatronCiclo[]
   }
   timestamp: number
 }
@@ -64,7 +65,7 @@ export function loadLocalData(): { turnos: TurnosData; perfil: LocalData['perfil
     const stored = localStorage.getItem(STORAGE_KEY)
     if (stored) {
       const parsed: LocalData = JSON.parse(stored)
-      return { turnos: parsed.turnos || {}, perfil: parsed.perfil || defaultPerfil() }
+      return { turnos: parsed.turnos || {}, perfil: normalizarPerfil(parsed.perfil || defaultPerfil()) }
     }
     // Try to migrate from old format
     return migrarDatosViejos()
@@ -83,8 +84,19 @@ export function defaultPerfil(): LocalData['perfil'] {
     vacacionesSindicato: 2,
     vacacionesTotal: 17,
     patronActual: null,
+    patrones: [],
     mesesBorrados: [],
   }
+}
+
+// ─── Normalizar perfil (migración a múltiples ciclos) ───
+export function normalizarPerfil(perfil: LocalData['perfil']): LocalData['perfil'] {
+  const p = { ...perfil }
+  const patrones = Array.isArray(p.patrones) ? p.patrones : []
+  if (patrones.length === 0 && p.patronActual) {
+    patrones.push(p.patronActual)
+  }
+  return { ...p, patrones }
 }
 
 // ─── Theme ───

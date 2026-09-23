@@ -24,6 +24,8 @@ export interface UserProfile {
   /** Total vacaciones calculado (ley + sindicato) */
   vacacionesTotal: number
   patronActual: PatronCiclo | null
+  /** Ciclos guardados (puedes tener varios; el activo es patronActual) */
+  patrones: PatronCiclo[]
 }
 
 export interface PatronCiclo {

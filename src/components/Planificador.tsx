@@ -6,11 +6,14 @@ interface PlanificadorProps {
   year: number
   month: number
   activePattern: PatronCiclo | null
+  patrones: PatronCiclo[]
   onApply: (fechaInicio: string, cicloId: string, year: number, month: number) => void
+  onSwitch: (patron: PatronCiclo) => void
+  onDelete: (patron: PatronCiclo) => void
   onNavigate: (year: number, month: number) => void
 }
 
-export default function Planificador({ year, month, activePattern, onApply, onNavigate }: PlanificadorProps) {
+export default function Planificador({ year, month, activePattern, patrones, onApply, onSwitch, onDelete, onNavigate }: PlanificadorProps) {
   const [cicloId, setCicloId] = useState('10')
   const [fechaInicio, setFechaInicio] = useState('')
 
@@ -111,6 +114,66 @@ export default function Planificador({ year, month, activePattern, onApply, onNa
           >
             AUTO-GENERAR MES SIGUIENTE ►
           </button>
+        )}
+
+        {/* ═══ MIS CICLOS GUARDADOS ═══ */}
+        {patrones.length > 0 && (
+          <div className="pt-2 border-t" style={{ borderColor: 'var(--border-color)' }}>
+            <h4 className="font-bold text-sm mb-2 mt-3" style={{ color: 'var(--text-muted)' }}>
+              Mis ciclos guardados
+            </h4>
+            <div className="space-y-2">
+              {patrones.map((p) => {
+                const isActive =
+                  activePattern?.fechaInicio === p.fechaInicio &&
+                  activePattern?.cicloId === p.cicloId
+                const label = CICLOS_LABELS[p.cicloId]
+                return (
+                  <div
+                    key={`${p.cicloId}-${p.fechaInicio}`}
+                    className="flex items-center justify-between gap-2 p-3 rounded-xl border"
+                    style={{
+                      borderColor: isActive ? 'var(--color-primary)' : 'var(--border-color)',
+                      backgroundColor: isActive ? 'rgba(37, 99, 235, 0.08)' : 'var(--bg-body)',
+                    }}
+                  >
+                    <div className="min-w-0">
+                      <div className="font-bold text-xs truncate" style={{ color: 'var(--text-main)' }}>
+                        {label ? label.split(':')[0] : p.cicloId} {isActive && '● ACTIVO'}
+                      </div>
+                      <div className="text-[10px]" style={{ color: 'var(--text-muted)' }}>
+                        Inicia: {p.fechaInicio} · {p.cicloId}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      {!isActive && (
+                        <button
+                          onClick={() => onSwitch(p)}
+                          className="px-2.5 py-1.5 rounded-lg text-[10px] font-bold transition"
+                          style={{
+                            backgroundColor: 'rgba(37, 99, 235, 0.12)',
+                            color: '#2563eb',
+                          }}
+                        >
+                          Usar
+                        </button>
+                      )}
+                      <button
+                        onClick={() => onDelete(p)}
+                        className="px-2.5 py-1.5 rounded-lg text-[10px] font-bold transition"
+                        style={{
+                          backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                          color: '#ef4444',
+                        }}
+                      >
+                        Eliminar
+                      </button>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
         )}
       </div>
     </div>

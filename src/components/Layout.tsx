@@ -20,10 +20,13 @@ export default function Layout({ children, userName, isOnline, onOpenProfile, on
     <>
       {/* Header */}
       <header
-        className="fixed top-0 w-full z-40 px-4 py-3 flex justify-between items-center shadow-sm border-b"
+        className="fixed top-0 w-full z-40 px-4 flex justify-between items-center shadow-sm border-b"
         style={{
           backgroundColor: 'var(--header-bg)',
           borderColor: 'var(--border-color)',
+          paddingTop: 'max(0.6rem, env(safe-area-inset-top, 0px))',
+          paddingBottom: '0.6rem',
+          height: 'calc(3.6rem + env(safe-area-inset-top, 0px))',
         }}
       >
         <div className="flex items-center gap-2">
@@ -114,7 +117,10 @@ export default function Layout({ children, userName, isOnline, onOpenProfile, on
       </header>
 
       {/* Main Content */}
-      <div className="mt-20 container mx-auto px-4 max-w-5xl space-y-6">
+      <div
+        className="container mx-auto px-4 max-w-5xl space-y-6 pb-[calc(1.5rem+env(safe-area-inset-bottom,0px))]"
+        style={{ marginTop: 'calc(4.6rem + env(safe-area-inset-top, 0px))' }}
+      >
         {children}
       </div>
     </>
