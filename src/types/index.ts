@@ -40,13 +40,13 @@ export type CicloPaso = TurnoTipo | 'descanso'
 export const CICLOS_3X3: Record<string, CicloPaso[]> = {
   // 3x3 real: 3 día → 3 descanso → 3 noche → 3 descanso → 3 noche → 3 descanso (18 días)
   '10': ['dia', 'dia', 'dia', 'descanso', 'descanso', 'descanso', 'noche', 'noche', 'noche', 'descanso', 'descanso', 'descanso', 'noche', 'noche', 'noche', 'descanso', 'descanso', 'descanso'],
-  // 4x4: 4 día → 4 descanso → 4 noche → se repite (12 días)
-  '4x4': ['dia', 'dia', 'dia', 'dia', 'descanso', 'descanso', 'descanso', 'descanso', 'noche', 'noche', 'noche', 'noche'],
+  // 4x4: 4 día → 4 descanso → 4 noche → 4 descanso → se repite (16 días)
+  '4x4': ['dia', 'dia', 'dia', 'dia', 'descanso', 'descanso', 'descanso', 'descanso', 'noche', 'noche', 'noche', 'noche', 'descanso', 'descanso', 'descanso', 'descanso'],
 }
 
 export const CICLOS_LABELS: Record<string, string> = {
   '10': '3x3 Real: Día-Desc-Noche-Desc-Noche-Desc (18 días)',
-  '4x4': '4x4: Día-Descanso-Noche (12 días)',
+  '4x4': '4x4: Día-Descanso-Noche-Descanso (16 días)',
 }
 
 // ─── Stats Dashboard ───

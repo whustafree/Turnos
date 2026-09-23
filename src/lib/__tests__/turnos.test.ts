@@ -249,19 +249,20 @@ describe('ciclo 3x3 real (18 días)', () => {
   })
 })
 
-// ─── Ciclo 4x4 (12 días: 4 día → 4 descanso → 4 noche → se repite) ───
-describe('ciclo 4x4 (12 días)', () => {
+// ─── Ciclo 4x4 (16 días: 4 día → 4 descanso → 4 noche → 4 descanso → se repite) ───
+describe('ciclo 4x4 (16 días)', () => {
   const patron: PatronCiclo = { fechaInicio: '2025-02-03', cicloId: '4x4' }
 
-  it('generates day, rest and night blocks', () => {
+  it('generates day, rest, night and final rest blocks', () => {
     for (let d = 3; d <= 6; d++) expect(calcularTurnoOriginal(new Date(2025, 1, d), patron)).toBe('dia')
     for (let d = 7; d <= 10; d++) expect(calcularTurnoOriginal(new Date(2025, 1, d), patron)).toBeNull()
     for (let d = 11; d <= 14; d++) expect(calcularTurnoOriginal(new Date(2025, 1, d), patron)).toBe('noche')
+    for (let d = 15; d <= 18; d++) expect(calcularTurnoOriginal(new Date(2025, 1, d), patron)).toBeNull()
   })
 
-  it('repeats with the day block after the night block', () => {
-    // Feb 15 = 12 days after start → position 0 of the next period → day again
-    for (let d = 15; d <= 18; d++) expect(calcularTurnoOriginal(new Date(2025, 1, d), patron)).toBe('dia')
+  it('repeats with the day block after the final rest', () => {
+    // Feb 19 = 16 days after start → position 0 of the next period → day again
+    for (let d = 19; d <= 22; d++) expect(calcularTurnoOriginal(new Date(2025, 1, d), patron)).toBe('dia')
   })
 })
 
