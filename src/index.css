@@ -93,3 +93,17 @@ body {
 ::-webkit-scrollbar { width: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 4px; }
+
+/* ─── Impresión / PDF del mes ─── */
+@media print {
+  header,
+  .no-print,
+  .turno-badge { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  header { display: none !important; }
+  body { background: #ffffff !important; }
+  .day { min-height: 70px; break-inside: avoid; background: #ffffff !important; border-color: #d1d5db !important; }
+  .day.today { border-color: #2563eb !important; }
+  .t-dia { background-color: #fef3c7 !important; color: #92400e !important; border-color: #fde68a !important; }
+  .t-noche { background-color: #e0e7ff !important; color: #3730a3 !important; border-color: #c7d2fe !important; }
+  .t-extra { background-color: #fce7f3 !important; color: #9d174d !important; border-color: #fbcfe8 !important; }
+}

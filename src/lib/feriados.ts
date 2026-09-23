@@ -40,9 +40,19 @@ export function esFeriado(fecha: Date): boolean {
   const y = fecha.getFullYear()
   if (!feriadosCache[y]) {
     feriadosCache[y] = new Set()
-    Object.values(FERIADOS_FN).forEach((fn) => {
-      feriadosCache[y].add(fn(y).toDateString())
-    })
+    // Incluye los años vecinos para capturar "lunes festivo" que caen en enero
+    for (const ay of [y - 1, y, y + 1]) {
+      Object.values(FERIADOS_FN).forEach((fn) => {
+        const d = fn(ay)
+        feriadosCache[y].add(d.toDateString())
+        // Ley Sana: si el feriado cae día domingo, el lunes siguiente también es festivo
+        if (d.getDay() === 0) {
+          const lunes = new Date(d)
+          lunes.setDate(lunes.getDate() + 1)
+          feriadosCache[y].add(lunes.toDateString())
+        }
+      })
+    }
   }
   return feriadosCache[y].has(fecha.toDateString())
 }

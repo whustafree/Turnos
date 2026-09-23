@@ -121,3 +121,30 @@ jobs:
           name: TurnosApp-Release-AAB
           path: android/app/build/outputs/bundle/release/app-release.aab
           if-no-files-found: ignore
+
+      # ─── Publish APK como Release descargable desde el repo ───
+      - name: Prepare release files
+        run: |
+          mkdir -p release-assets
+          cp android/app/build/outputs/apk/debug/app-debug.apk release-assets/TurnosApp-Debug.apk || true
+          cp android/app/build/outputs/apk/release/app-release.apk release-assets/TurnosApp-Release.apk || true
+          cp android/app/build/outputs/bundle/release/app-release.aab release-assets/TurnosApp-Release.aab || true
+
+      - name: Publish GitHub Release (apk-latest)
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: apk-latest
+          name: 📱 TurnosApp — APK para Android
+          body: |
+            Última versión generada automáticamente desde `main`.
+
+            **Descargas:**
+            - **`TurnosApp-Debug.apk`** — para instalar y probar en el teléfono
+            - `TurnosApp-Release.apk` — firmada (si está configurado el keystore)
+            - `TurnosApp-Release.aab` — para Google Play Store (si está configurado el keystore)
+
+            > En Android permite "instalar desde orígenes desconocidos". Este archivo se
+            > actualiza en cada push a `main` (etiqueta fija `apk-latest`).
+          files: release-assets/*
+          fail_on_unmatched_files: false
+          token: ${{ secrets.GITHUB_TOKEN }}

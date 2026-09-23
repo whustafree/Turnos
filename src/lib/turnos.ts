@@ -219,6 +219,50 @@ export function calcularDashboardStats(
   }
 }
 
+// ─── Estadísticas anuales de turnos ───
+export interface StatsAnuales {
+  dias: number
+  noches: number
+  extrasDia: number
+  extrasNoche: number
+  diasTrabajados: number
+  vacaciones: number
+  administrativos: number
+}
+
+export function calcularStatsAnuales(turnos: TurnosData, year: number): StatsAnuales {
+  const s: StatsAnuales = {
+    dias: 0,
+    noches: 0,
+    extrasDia: 0,
+    extrasNoche: 0,
+    diasTrabajados: 0,
+    vacaciones: 0,
+    administrativos: 0,
+  }
+
+  if (!turnos[year]) return s
+
+  Object.keys(turnos[year]).forEach((m) => {
+    Object.keys(turnos[year][Number(m)]).forEach((d) => {
+      const dia = turnos[year][Number(m)][Number(d)]
+      if (dia.tipo === 'vacaciones') s.vacaciones++
+      else if (dia.tipo === 'administrativo') s.administrativos++
+      else if (dia.turnos) {
+        for (const t of dia.turnos) {
+          if (t === 'dia') s.dias++
+          else if (t === 'noche') s.noches++
+          else if (t === 'extra-dia') s.extrasDia++
+          else if (t === 'extra-noche') s.extrasNoche++
+        }
+        if (dia.turnos.some((t) => t === 'dia' || t === 'noche')) s.diasTrabajados++
+      }
+    })
+  })
+
+  return s
+}
+
 // ─── Agrupar Ausencias ───
 export interface AusenciaGroup {
   inicio: Date

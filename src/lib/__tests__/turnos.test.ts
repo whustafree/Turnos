@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, beforeAll } from 'vitest'
 import {
   defaultPerfil,
   calcularDashboardStats,
+  calcularStatsAnuales,
   calcularTurnoOriginal,
   agruparAusencias,
   generarCartaVacaciones,
@@ -10,6 +11,7 @@ import {
   aplicarCiclo,
   obtenerDia,
 } from '../turnos'
+import { esDiaHabil, esFeriado } from '../feriados'
 import type { TurnosData, PatronCiclo } from '../../types'
 
 // ─── LocalStorage Mock ───
@@ -266,6 +268,46 @@ describe('ciclo 4x4 (16 días)', () => {
   })
 })
 
+// ─── Feriados Ley Sana ───
+describe('feriados Ley Sana', () => {
+  it('marks the Monday after a Sunday holiday as non-working', () => {
+    // En 2025 el feriado "Encuentro Dos Mundos" (12 oct) cae domingo
+    expect(esFeriado(new Date(2025, 9, 12))).toBe(true)
+    expect(esDiaHabil(new Date(2025, 9, 13))).toBe(false) // lunes festivo
+  })
+
+  it('keeps a normal Monday as working day', () => {
+    expect(esDiaHabil(new Date(2025, 9, 6))).toBe(true) // lunes 6 oct
+  })
+})
+
+// ─── Estadísticas anuales ───
+describe('calcularStatsAnuales', () => {
+  it('counts day, night and extra shifts in a year', () => {
+    const turnos: TurnosData = {
+      2025: {
+        0: {
+          1: { turnos: ['dia'], tipo: 'turno' },
+          2: { turnos: ['noche'], tipo: 'turno' },
+          3: { turnos: ['dia', 'extra-dia'], tipo: 'turno' },
+          4: { turnos: ['noche', 'extra-noche'], tipo: 'turno' },
+          5: { turnos: ['dia'], tipo: 'vacaciones' },
+          6: { turnos: ['dia'], tipo: 'administrativo' },
+        },
+      },
+    }
+    const s = calcularStatsAnuales(turnos, 2025)
+    expect(s.dias).toBe(2)
+    expect(s.noches).toBe(2)
+    expect(s.extrasDia).toBe(1)
+    expect(s.extrasNoche).toBe(1)
+    expect(s.diasTrabajados).toBe(4)
+    expect(s.vacaciones).toBe(1)
+    expect(s.administrativos).toBe(1)
+  })
+})
+
+// ─── agruparAusencias ───
 describe('agruparAusencias', () => {
   it('returns empty array for no turnos', () => {
     expect(agruparAusencias({}, 2025)).toEqual([])

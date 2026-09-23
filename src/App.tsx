@@ -1,7 +1,8 @@
 import { useState, useMemo, useEffect, useRef, useCallback } from 'react'
-import { ChevronLeft, ChevronRight, Trash2 } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Trash2, Printer, Bell, BellRing } from 'lucide-react'
 import { useAuth } from './hooks/useAuth'
 import { useCalendar } from './hooks/useCalendar'
+import { obtenerDia } from './lib/turnos'
 import type { TurnoTipo, TurnosData } from './types'
 import LoginPage from './components/LoginPage'
 import Layout from './components/Layout'
@@ -42,6 +43,7 @@ export default function App() {
     getAusencias,
     importData,
     isOnline,
+    syncError,
   } = useCalendar(userId)
 
   const today = new Date()
@@ -69,6 +71,73 @@ export default function App() {
   // ─── Stats ───
   const stats = getDashboardStats(year)
   const ausenciaGroups = getAusencias(year)
+
+  // ─── Turno de HOY ───
+  const hoyInfo = useMemo(() => {
+    const t = today
+    const data = obtenerDia(turnos, t.getFullYear(), t.getMonth(), t.getDate(), perfil.patronActual, perfil.mesesBorrados || [])
+    if (!data) return { label: 'Hoy: Descanso', color: '#6b7280', isWork: false }
+    if (data.tipo === 'vacaciones') return { label: 'Hoy: Vacaciones', color: '#ca8a04', isWork: false }
+    if (data.tipo === 'administrativo') return { label: 'Hoy: Día administrativo', color: '#2563eb', isWork: false }
+    const turnosDia = data.turnos || []
+    if (turnosDia.includes('noche')) return { label: 'Hoy: NOCHE', color: '#4338ca', isWork: true }
+    if (turnosDia.includes('dia')) return { label: 'Hoy: DÍA', color: '#059669', isWork: true }
+    return { label: 'Hoy: Descanso', color: '#6b7280', isWork: false }
+  }, [turnos, perfil.patronActual, perfil.mesesBorrados])
+
+  // ─── Recordatorio del turno de HOY (notificación del navegador) ───
+  const notifDateKey = today.toDateString()
+  useEffect(() => {
+    if (typeof Notification === 'undefined') return
+    const enabled = localStorage.getItem('turnos_notif') === '1'
+    if (!enabled || Notification.permission !== 'granted') return
+    if (localStorage.getItem('turnos_notif_date') === notifDateKey) return
+    if (hoyInfo.isWork) {
+      try {
+        new Notification('TurnosApp', {
+          body: `${hoyInfo.label} — buen turno! 💪`,
+        })
+      } catch { /* ignore */ }
+      localStorage.setItem('turnos_notif_date', notifDateKey)
+    }
+  }, [hoyInfo.label, hoyInfo.isWork, notifDateKey])
+
+  const handleEnableNotifications = async () => {
+    if (typeof Notification === 'undefined') {
+      showError('Tu navegador no soporta notificaciones')
+      return
+    }
+    try {
+      const perm = await Notification.requestPermission()
+      if (perm === 'granted') {
+        localStorage.setItem('turnos_notif', '1')
+        showError('✅ Recordatorios activados. Verás el turno del día al abrir la app.')
+      } else {
+        showError('Notificaciones no permitidas')
+      }
+    } catch {
+      showError('No se pudieron activar las notificaciones')
+    }
+  }
+
+  // ─── Tema de acento (color de la app) ───
+  const [accent, setAccent] = useState<string>(() => localStorage.getItem('turnos_accent') || '#2563eb')
+  const applyAccent = useCallback((hex: string) => {
+    setAccent(hex)
+    localStorage.setItem('turnos_accent', hex)
+    document.documentElement.style.setProperty('--color-primary', hex)
+    document.documentElement.style.setProperty('--color-primary-dark', hex)
+  }, [])
+  useEffect(() => {
+    applyAccent(localStorage.getItem('turnos_accent') || '#2563eb')
+  }, [applyAccent])
+
+  // ─── Handler: EXTRA rápido (tocar y mantener) ───
+  const handleQuickExtra = (day: number) => {
+    const data = obtenerDia(turnos, year, month, day, perfil.patronActual, perfil.mesesBorrados || [])
+    const esNoche = data?.turnos?.includes('noche') || false
+    addTurno(year, month, day, esNoche ? 'extra-noche' : 'extra-dia')
+  }
 
   // ─── Admin config save handler ───
   const handleAdminSave = (data: {
@@ -219,6 +288,10 @@ export default function App() {
           userCargo={perfil.cargo}
           userEmpresa={perfil.empresa}
           onOpenProfile={handleOpenProfile}
+          onGoCalendar={() => {
+            setActiveTab('calendario')
+            goToToday()
+          }}
           turnos={turnos}
           profile={perfil}
           onImport={handleImport}
@@ -259,6 +332,14 @@ export default function App() {
 
           <div className="flex gap-1 pr-2">
             <button
+              onClick={() => window.print()}
+              title="Imprimir / guardar PDF del mes"
+              className="w-10 h-10 flex items-center justify-center rounded-lg transition"
+              style={{ color: 'var(--text-muted)' }}
+            >
+              <Printer className="w-4 h-4" />
+            </button>
+            <button
               onClick={handleClearMonth}
               title="Borrar mes completo"
               className="w-10 h-10 flex items-center justify-center rounded-lg transition"
@@ -293,6 +374,44 @@ export default function App() {
           </div>
         </div>
 
+        {/* ═══ TURNO DE HOY + RECORDATORIO ═══ */}
+        <div className="no-print flex items-center justify-between gap-2 p-3 rounded-xl border shadow-sm"
+          style={{
+            backgroundColor: 'var(--bg-card)',
+            borderColor: hoyInfo.isWork ? hoyInfo.color : 'var(--border-color)',
+          }}>
+          <div className="flex items-center gap-2">
+            <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: hoyInfo.color }} />
+            <span className="font-bold text-sm uppercase tracking-wide" style={{ color: hoyInfo.color }}>
+              {hoyInfo.label}
+            </span>
+          </div>
+          <button
+            onClick={handleEnableNotifications}
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-[11px] font-bold transition"
+            style={{
+              backgroundColor: 'rgba(37, 99, 235, 0.1)',
+              color: '#2563eb',
+            }}
+            title="Activar recordatorio del turno del día"
+          >
+            {localStorage.getItem('turnos_notif') === '1' ? <BellRing className="w-3.5 h-3.5" /> : <Bell className="w-3.5 h-3.5" />}
+            Recordar
+          </button>
+        </div>
+
+        {/* ═══ ERROR DE SINCRONIZACIÓN ═══ */}
+        {syncError && (
+          <div className="no-print p-3 rounded-xl border text-sm font-semibold animate-slide-up"
+            style={{
+              backgroundColor: 'rgba(234, 179, 8, 0.1)',
+              color: '#a16207',
+              borderColor: 'rgba(234, 179, 8, 0.3)',
+            }}>
+            ⚠️ {syncError}
+          </div>
+        )}
+
         {/* ═══ TABS ═══ */}
         <div className="grid grid-cols-4 gap-2">
           {([
@@ -318,14 +437,17 @@ export default function App() {
 
         {/* ═══ TAB CONTENT ═══ */}
         {activeTab === 'calendario' && (
-          <CalendarGrid
-            year={year}
-            month={month}
-            turnos={turnos}
-            patronActual={perfil.patronActual}
-            mesesBorrados={perfil.mesesBorrados || []}
-            onOpenDay={handleDayClick}
-          />
+          <div className="print-area">
+            <CalendarGrid
+              year={year}
+              month={month}
+              turnos={turnos}
+              patronActual={perfil.patronActual}
+              mesesBorrados={perfil.mesesBorrados || []}
+              onOpenDay={handleDayClick}
+              onQuickExtra={handleQuickExtra}
+            />
+          </div>
         )}
 
         {activeTab === 'planificar' && (
@@ -352,6 +474,36 @@ export default function App() {
               vacacionesUsadas={stats.vacacionesUsadas}
               onSave={handleAdminSave}
             />
+
+            {/* ═══ TEMA DE COLOR ═══ */}
+            <div className="no-print p-5 rounded-xl shadow-sm border" style={{ backgroundColor: 'var(--bg-card)', borderColor: 'var(--border-color)' }}>
+              <h3 className="font-bold text-lg mb-3" style={{ color: 'var(--text-main)' }}>
+                Tema de color
+              </h3>
+              <div className="flex flex-wrap gap-3">
+                {[
+                  { name: 'Azul', hex: '#2563eb' },
+                  { name: 'Verde', hex: '#059669' },
+                  { name: 'Violeta', hex: '#7c3aed' },
+                  { name: 'Rojo', hex: '#dc2626' },
+                  { name: 'Ámbar', hex: '#d97706' },
+                ].map((c) => (
+                  <button
+                    key={c.hex}
+                    onClick={() => applyAccent(c.hex)}
+                    className="flex flex-col items-center gap-1.5"
+                  >
+                    <span
+                      className={`w-9 h-9 rounded-full transition-transform ${accent === c.hex ? 'ring-2 ring-offset-2 scale-110' : ''}`}
+                      style={{ backgroundColor: c.hex, boxShadow: `0 0 12px ${c.hex}66` }}
+                    />
+                    <span className="text-[10px] font-semibold" style={{ color: accent === c.hex ? c.hex : 'var(--text-muted)' }}>
+                      {c.name}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </div>
 
             <button
               onClick={handleClearAll}

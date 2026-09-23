@@ -90,6 +90,7 @@ export function useCalendar(userId: string | undefined) {
   const [selectedDay, setSelectedDay] = useState<number | null>(null)
   const [showTurnoModal, setShowTurnoModal] = useState(false)
   const [showProfileModal, setShowProfileModal] = useState(false)
+  const [syncError, setSyncError] = useState<string | null>(null)
   const { isOnline, queueSync } = useOfflineSync(userId)
 
   useEffect(() => {
@@ -140,7 +141,12 @@ export function useCalendar(userId: string | undefined) {
             },
             { onConflict: 'user_id' }
           ).then(({ error }) => {
-            if (error) console.error('Error syncing to cloud:', error)
+            if (error) {
+              console.error('Error syncing to cloud:', error)
+              setSyncError('No se pudo guardar en la nube. Tus datos están a salvo en este dispositivo.')
+            } else {
+              setSyncError(null)
+            }
           })
         } else {
           queueSync()
@@ -382,5 +388,6 @@ export function useCalendar(userId: string | undefined) {
     getAusencias,
     importData,
     isOnline,
+    syncError,
   }
 }

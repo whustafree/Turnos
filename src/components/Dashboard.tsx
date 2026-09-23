@@ -1,5 +1,5 @@
-import { Calculator, Download, Upload } from 'lucide-react'
-import { exportarJSON, exportarCSV, importarJSON } from '../lib/turnos'
+import { Calculator, Download, Upload, CalendarDays } from 'lucide-react'
+import { exportarJSON, exportarCSV, importarJSON, calcularStatsAnuales } from '../lib/turnos'
 import type { DashboardStats, TurnosData } from '../types'
 
 interface DashboardProps {
@@ -8,6 +8,7 @@ interface DashboardProps {
   userCargo: string
   userEmpresa: string
   onOpenProfile: () => void
+  onGoCalendar: () => void
   turnos: TurnosData
   profile: {
     nombre: string
@@ -23,8 +24,10 @@ interface DashboardProps {
   onImport: (turnos: TurnosData, perfil: DashboardProps['profile']) => void
 }
 
-export default function Dashboard({ stats, userName, userCargo, userEmpresa, onOpenProfile, turnos, profile, onImport }: DashboardProps) {
+export default function Dashboard({ stats, userName, userCargo, userEmpresa, onOpenProfile, onGoCalendar, turnos, profile, onImport }: DashboardProps) {
   const iniciales = (userName || 'U').split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()
+
+  const anual = calcularStatsAnuales(turnos, new Date().getFullYear())
 
   const adminPercent = Math.min(100, (stats.adminUsados / (stats.adminTotal || 1)) * 100)
   const vacPercent = Math.min(100, (stats.vacacionesUsadas / (stats.vacacionesTotal || 1)) * 100)
@@ -165,7 +168,19 @@ export default function Dashboard({ stats, userName, userCargo, userEmpresa, onO
         </div>
 
         {/* ═══ EXPORT / IMPORT BUTTONS ═══ */}
-        <div className="flex gap-2 mt-3">
+        <div className="flex gap-2 mt-3 flex-wrap">
+          <button
+            onClick={onGoCalendar}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-[10px] font-bold transition"
+            style={{
+              backgroundColor: 'rgba(16, 185, 129, 0.1)',
+              color: '#059669',
+              border: '1px solid rgba(16, 185, 129, 0.2)',
+            }}
+          >
+            <CalendarDays className="w-3 h-3" />
+            Calendario
+          </button>
           <button
             onClick={handleExportJSON}
             className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-[10px] font-bold transition"
@@ -202,6 +217,21 @@ export default function Dashboard({ stats, userName, userCargo, userEmpresa, onO
             <Upload className="w-3 h-3" />
             Importar
           </button>
+        </div>
+
+        {/* ═══ ESTADÍSTICAS ANUALES ═══ */}
+        <div className="grid grid-cols-4 gap-2 mt-3">
+          {[
+            { label: 'DÍAS', value: anual.dias, color: '#059669' },
+            { label: 'NOCHES', value: anual.noches, color: '#4338ca' },
+            { label: 'EXTRAS', value: anual.extrasDia + anual.extrasNoche, color: '#d97706' },
+            { label: 'TOTAL', value: anual.diasTrabajados, color: 'var(--text-main)' },
+          ].map((c) => (
+            <div key={c.label} className="p-2 rounded-xl border text-center" style={{ borderColor: 'var(--border-color)' }}>
+              <div className="text-base font-bold" style={{ color: c.color }}>{c.value}</div>
+              <div className="text-[8px] font-bold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>{c.label}</div>
+            </div>
+          ))}
         </div>
       </div>
     </div>

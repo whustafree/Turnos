@@ -10,11 +10,12 @@ interface CalendarGridProps {
   patronActual: PatronCiclo | null
   mesesBorrados: string[]
   onOpenDay: (day: number) => void
+  onQuickExtra: (day: number) => void
 }
 
 const DAY_LABELS = ['LU', 'MA', 'MI', 'JU', 'VI', 'SA', 'DO']
 
-export default function CalendarGrid({ year, month, turnos, patronActual, mesesBorrados, onOpenDay }: CalendarGridProps) {
+export default function CalendarGrid({ year, month, turnos, patronActual, mesesBorrados, onOpenDay, onQuickExtra }: CalendarGridProps) {
   const calendar = useMemo(() => {
     const firstDay = (new Date(year, month, 1).getDay() + 6) % 7
     const totalDays = new Date(year, month + 1, 0).getDate()
@@ -70,6 +71,10 @@ export default function CalendarGrid({ year, month, turnos, patronActual, mesesB
               key={item.day}
               className={classes}
               onClick={() => onOpenDay(item.day)}
+              onContextMenu={(e) => {
+                e.preventDefault()
+                onQuickExtra(item.day)
+              }}
               style={{
                 backgroundColor: 'var(--day-bg)',
                 borderColor: item.isToday ? 'var(--color-primary)' : 'var(--day-border)',
@@ -128,6 +133,10 @@ export default function CalendarGrid({ year, month, turnos, patronActual, mesesB
           )
         })}
       </div>
+
+      <p className="no-print text-center text-[10px] mt-2" style={{ color: 'var(--text-muted)' }}>
+        Toca un día para editarlo · Toca y mantén para agregar EXTRA rápido
+      </p>
     </div>
   )
 }
