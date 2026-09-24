@@ -129,7 +129,6 @@ export function calcularTurnoOriginal(
 
   const [iy, im, id] = fechaInicio.split('-').map(Number)
   const startDate = new Date(iy, im - 1, id)
-  if (fecha < startDate) return null
 
   const periodo = patronTrabajo.length
   const pos = ((diffDias(fecha, startDate) % periodo) + periodo) % periodo
@@ -159,7 +158,6 @@ export function aplicarCiclo(
 
   for (let d = 1; d <= diasMes; d++) {
     const currentDate = new Date(year, month, d)
-    if (currentDate < startDate) continue
 
     const diffDays = diffDias(currentDate, startDate)
     const pos = ((diffDays % periodo) + periodo) % periodo

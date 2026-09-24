@@ -15,6 +15,7 @@ import {
 import { esDiaHabil, esFeriado } from '../feriados'
 import { construirPlanilla, celdaDeDia, resumenPorDia } from '../planilla'
 import type { TurnoTipo, TurnosData } from '../../types'
+import { CICLOS_3X3 } from '../../types'
 import type { PatronCiclo } from '../../types'
 
 // ─── LocalStorage Mock ───
@@ -137,6 +138,14 @@ describe('calcularTurnoOriginal', () => {
     const date = new Date(2025, 0, 4)
     expect(calcularTurnoOriginal(date, patron)).toBeNull()
   })
+
+  it('extrapolates backwards a cycle that starts mid-month', () => {
+    const patron: PatronCiclo = { fechaInicio: '2025-01-15', cicloId: '10' }
+    // Jan 11 = 4 days before start → stage -4 → stage 14 = 'noche'
+    expect(calcularTurnoOriginal(new Date(2025, 0, 11), patron)).toBe('noche')
+    // Jan 1 = 14 days before start → stage -14 → stage 4 = 'descanso'
+    expect(calcularTurnoOriginal(new Date(2025, 0, 1), patron)).toBeNull()
+  })
 })
 
 // ─── calcularTurnoOriginal (horario de verano) ───
@@ -179,6 +188,29 @@ describe('aplicarCiclo', () => {
     }
     const result = aplicarCiclo(turnos, 2025, 0, { fechaInicio: '2025-01-01', cicloId: '10' })
     expect(result[2025][0][1].turnos).toEqual(['dia'])
+  })
+
+  it('fills the whole month even when the cycle starts mid-month', () => {
+    // Ciclo '10': 18 días = 3 día → 3 descanso → 3 noche → 3 descanso → 3 noche → 3 descanso
+    // Start Jan 15 → extrapolando hacia atrás: día 11 = 4 días antes → pos 14 = noche
+    const result = aplicarCiclo({}, 2025, 0, { fechaInicio: '2025-01-15', cicloId: '10' })
+    // Días previos al inicio ya tienen turno extrapolado del ciclo
+    expect(result[2025]?.[0]?.[9]?.turnos).toEqual(['noche'])
+    expect(result[2025]?.[0]?.[10]?.turnos).toEqual(['noche'])
+    expect(result[2025]?.[0]?.[11]?.turnos).toEqual(['noche'])
+    expect(result[2025]?.[0]?.[1]).toBeUndefined() // día 1 = descanso extrapolado
+    // El día de inicio sigue siendo 'dia'
+    expect(result[2025]?.[0]?.[15]?.turnos).toEqual(['dia'])
+    // Todos los días del mes ya vienen resueltos (turno o descanso)
+    for (let d = 1; d <= 31; d++) {
+      const entry = result[2025]?.[0]?.[d]
+      const stage = ((d - 15) % 18 + 18) % 18
+      if (CICLOS_3X3['10'][stage] === 'descanso') {
+        expect(entry).toBeUndefined()
+      } else {
+        expect(entry?.turnos).toEqual([CICLOS_3X3['10'][stage]])
+      }
+    }
   })
 })
 
