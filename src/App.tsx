@@ -74,6 +74,9 @@ export default function App() {
     if (!update.downloadUrl) return
     window.open(update.downloadUrl, '_system')
   }
+  const handleCheckUpdate = () => {
+    update.refreshVersion()
+  }
 
   // ─── Modo compacto: minimizar la info para dejar el calendario grande ───
   const [minimized, setMinimized] = useState<boolean>(
@@ -758,6 +761,8 @@ export default function App() {
         onSave={saveProfile}
         onLogout={handleLogout}
         onClose={handleCloseProfile}
+        updateInfo={{ checking: update.checking, available: update.available, current: update.current, latest: update.latest, downloadUrl: update.downloadUrl }}
+        onCheckUpdate={handleCheckUpdate}
       />
     </div>
   )

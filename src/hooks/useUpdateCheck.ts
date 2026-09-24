@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { isNative } from '../lib/native'
 
 const REMOTE_TAGS_URL = 'https://api.github.com/repos/whustafree/Turnos/tags?per_page=50'
@@ -51,7 +51,7 @@ function writeCache(latest: string) {
   }
 }
 
-export function useUpdateCheck(): UpdateStatus {
+export function useUpdateCheck() {
   const [status, setStatus] = useState<UpdateStatus>({
     checking: true,
     available: false,
@@ -60,61 +60,60 @@ export function useUpdateCheck(): UpdateStatus {
     downloadUrl: '',
   })
 
-  useEffect(() => {
-    let cancelled = false
+  const runCheck = useCallback(async (force = false) => {
+    setStatus((s) => ({ ...s, checking: true }))
 
-    const checkUpdate = async () => {
-      let current = '0.0'
-      try {
-        const localRes = await fetch('version.json', { cache: 'no-store' })
-        if (localRes.ok) {
-          const local = await localRes.json()
-          current = local.version || '0.0'
-        }
-      } catch {
-        /* versión local no disponible */
+    let current = '0.0'
+    try {
+      const localRes = await fetch('version.json', { cache: 'no-store' })
+      if (localRes.ok) {
+        const local = await localRes.json()
+        current = local.version || '0.0'
       }
+    } catch {
+      /* versión local no disponible */
+    }
 
-      let latest = ''
-      let downloadUrl = ''
-      try {
-        const cached = readCache()
-        if (cached) {
-          latest = cached.latest
-        } else {
-          const remoteRes = await fetch(REMOTE_TAGS_URL, { cache: 'no-store' })
-          if (remoteRes.ok) {
-            const tags = (await remoteRes.json()) as { name: string }[]
-            const versions = tags
-              .map((t) => t.name)
-              .filter((n) => /^0\.\d+$/.test(n))
-            if (versions.length > 0) {
-              versions.sort((a, b) => compareVersions(b, a))
-              latest = versions[0]
-            }
-            writeCache(latest)
+    let latest = ''
+    let downloadUrl = ''
+    try {
+      if (force) {
+        localStorage.removeItem(CHECK_CACHE_KEY)
+      }
+      const cached = readCache()
+      if (cached) {
+        latest = cached.latest
+      } else {
+        const remoteRes = await fetch(REMOTE_TAGS_URL, { cache: 'no-store' })
+        if (remoteRes.ok) {
+          const tags = (await remoteRes.json()) as { name: string }[]
+          const versions = tags
+            .map((t) => t.name)
+            .filter((n) => /^0\.\d+$/.test(n))
+          if (versions.length > 0) {
+            versions.sort((a, b) => compareVersions(b, a))
+            latest = versions[0]
           }
+          writeCache(latest)
         }
-        downloadUrl = `https://github.com/whustafree/Turnos/releases/download/apk-latest/TurnosApp-Debug.apk`
-      } catch {
-        /* sin conexión o sin release aún */
       }
-
-      if (cancelled) return
-      setStatus({
-        checking: false,
-        available: isNative() && latest !== '' && compareVersions(latest, current) > 0,
-        current,
-        latest,
-        downloadUrl,
-      })
+      downloadUrl = `https://github.com/whustafree/Turnos/releases/download/apk-latest/TurnosApp-Debug.apk`
+    } catch {
+      /* sin conexión o sin release aún */
     }
 
-    checkUpdate()
-    return () => {
-      cancelled = true
-    }
+    setStatus({
+      checking: false,
+      available: isNative() && latest !== '' && compareVersions(latest, current) > 0,
+      current,
+      latest,
+      downloadUrl,
+    })
   }, [])
 
-  return status
+  useEffect(() => {
+    runCheck()
+  }, [runCheck])
+
+  return { ...status, refreshVersion: () => runCheck(true) }
 }
