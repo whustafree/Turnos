@@ -8,6 +8,14 @@ export interface EquipoMiembro {
   equipo_id: string
 }
 
+export interface MiembroVirtual {
+  id: string
+  equipo_id: string
+  nombre: string
+  ciclo_id: string
+  fecha_inicio: string
+}
+
 export async function obtenerEquipoId(): Promise<{ equipoId: string | null; disponible: boolean }> {
   try {
     const { data, error } = await supabase
@@ -106,8 +114,83 @@ export async function crearCuentaYAgregar(
   }
 }
 
-// Descarga turnos + perfil de cada miembro para construir la planilla
-export async function cargarTurnosMiembros(miembros: EquipoMiembro[]): Promise<MiembroRoster[]> {
+// ─── Miembros virtuales (personas sin app) ───
+
+export async function obtenerVirtuales(equipoId: string): Promise<MiembroVirtual[]> {
+  try {
+    const { data, error } = await supabase
+      .from('miembros_virtuales')
+      .select('id, equipo_id, nombre, ciclo_id, fecha_inicio')
+      .eq('equipo_id', equipoId)
+      .order('nombre')
+    if (error) throw error
+    return (data || []) as MiembroVirtual[]
+  } catch (e: any) {
+    const msg = (e?.message || '').toLowerCase()
+    const noTabla = msg.includes('does not exist') || msg.includes('relation') || msg.includes('42p01')
+    if (noTabla) {
+      // Todavía no se ejecutó supabase/virtuales.sql
+      return []
+    }
+    return []
+  }
+}
+
+export async function crearVirtual(
+  equipoId: string,
+  nombre: string,
+  cicloId: string,
+  fechaInicio: string
+): Promise<{ ok: boolean; error?: string }> {
+  try {
+    const { data, error } = await supabase.rpc('crear_virtual', {
+      p_equipo_id: equipoId,
+      p_nombre: nombre.trim(),
+      p_ciclo_id: cicloId,
+      p_fecha_inicio: fechaInicio || '2025-01-01',
+    })
+    if (error) return { ok: false, error: (error as any).message || error.message }
+    return { ok: true, error: undefined }
+  } catch (e: any) {
+    return { ok: false, error: e?.message || 'Error al crear la persona' }
+  }
+}
+
+export async function actualizarVirtual(
+  id: string,
+  nombre: string,
+  cicloId: string,
+  fechaInicio: string
+): Promise<{ ok: boolean; error?: string }> {
+  try {
+    const { error } = await supabase.rpc('actualizar_virtual', {
+      p_id: id,
+      p_nombre: nombre.trim(),
+      p_ciclo_id: cicloId,
+      p_fecha_inicio: fechaInicio || '2025-01-01',
+    })
+    if (error) return { ok: false, error: (error as any).message || error.message }
+    return { ok: true }
+  } catch (e: any) {
+    return { ok: false, error: e?.message || 'Error al actualizar' }
+  }
+}
+
+export async function eliminarVirtual(id: string): Promise<boolean> {
+  try {
+    const { error } = await supabase.rpc('eliminar_virtual', { p_id: id })
+    return !error
+  } catch {
+    return false
+  }
+}
+
+// Descarga turnos + perfil de cada miembro para construir la planilla.
+// Incluye a los miembros virtuales (sin cuenta): se agregan con su ciclo.
+export async function cargarTurnosMiembros(
+  miembros: EquipoMiembro[],
+  virtuales: MiembroVirtual[] = []
+): Promise<MiembroRoster[]> {
   const roster: MiembroRoster[] = []
   for (const m of miembros) {
     try {
@@ -126,6 +209,14 @@ export async function cargarTurnosMiembros(miembros: EquipoMiembro[]): Promise<M
     } catch {
       /* siguiente miembro */
     }
+  }
+  for (const v of virtuales) {
+    roster.push({
+      id: `virtual-${v.id}`,
+      nombre: v.nombre || 'Trabajador',
+      datos: {},
+      virtual: { cicloId: v.ciclo_id, fechaInicio: v.fecha_inicio },
+    })
   }
   return roster
 }

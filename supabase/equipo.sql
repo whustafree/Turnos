@@ -24,6 +24,37 @@ create table if not exists public.miembros_equipo (
 alter table public.equipos enable row level security;
 alter table public.miembros_equipo enable row level security;
 
+-- Funciones auxiliares con SECURITY DEFINER (evitan la recursión infinita
+-- de RLS 42P17 que ocurre si las políticas consultan las tablas entre sí).
+
+-- ¿El usuario es dueño del equipo?
+create or replace function public.es_owner_equipo(p_equipo_id uuid, p_uid uuid default auth.uid())
+returns boolean
+language sql security definer set search_path = public
+as $$
+  select exists (select 1 from public.equipos e where e.id = p_equipo_id and e.owner_user_id = p_uid);
+$$;
+
+-- ¿El usuario es miembro (incl. dueño) del equipo?
+create or replace function public.es_miembro_equipo(p_equipo_id uuid, p_uid uuid default auth.uid())
+returns boolean
+language sql security definer set search_path = public
+as $$
+  select exists (select 1 from public.miembros_equipo m where m.equipo_id = p_equipo_id and m.user_id = p_uid);
+$$;
+
+-- ¿Dos usuarios comparten algún equipo?
+create or replace function public.comparten_equipo(p_uid uuid, p_uid2 uuid default auth.uid())
+returns boolean
+language sql security definer set search_path = public
+as $$
+  select exists (
+    select 1 from public.miembros_equipo a
+    join public.miembros_equipo b on b.equipo_id = a.equipo_id
+    where a.user_id = p_uid and b.user_id = p_uid2
+  );
+$$;
+
 -- El dueño lee/actualiza/borra su equipo
 drop policy if exists "owner gestiona equipos" on public.equipos;
 create policy "owner gestiona equipos"
@@ -37,30 +68,15 @@ drop policy if exists "miembros leen equipo" on public.equipos;
 create policy "miembros leen equipo"
   on public.equipos
   for select
-  using (
-    exists (
-      select 1 from public.miembros_equipo m
-      where m.equipo_id = equipos.id and m.user_id = auth.uid()
-    )
-  );
+  using (public.es_miembro_equipo(id, auth.uid()));
 
 -- El owner crea/invita/quita miembros
 drop policy if exists "owner gestiona miembros" on public.miembros_equipo;
 create policy "owner gestiona miembros"
   on public.miembros_equipo
   for all
-  using (
-    exists (
-      select 1 from public.equipos e
-      where e.id = miembros_equipo.equipo_id and e.owner_user_id = auth.uid()
-    )
-  )
-  with check (
-    exists (
-      select 1 from public.equipos e
-      where e.id = miembros_equipo.equipo_id and e.owner_user_id = auth.uid()
-    )
-  );
+  using (public.es_owner_equipo(equipo_id, auth.uid()))
+  with check (public.es_owner_equipo(equipo_id, auth.uid()));
 
 -- Los miembros leen quién integra el equipo
 drop policy if exists "miembros leen miembros" on public.miembros_equipo;
@@ -68,19 +84,8 @@ create policy "miembros leen miembros"
   on public.miembros_equipo
   for select
   using (
-    exists (
-      select 1 from public.equipos e
-      where e.id = miembros_equipo.equipo_id
-      and e.owner_user_id = auth.uid()
-    )
-    or exists (
-      select 1 from public.equipos e
-      where e.id = miembros_equipo.equipo_id
-      and exists (
-        select 1 from public.miembros_equipo m
-        where m.equipo_id = e.id and m.user_id = auth.uid()
-      )
-    )
+    public.es_owner_equipo(equipo_id, auth.uid())
+    or public.es_miembro_equipo(equipo_id, auth.uid())
   );
 
 -- El usuario comparte su perfil/turnos con su equipo (lectura)
@@ -92,15 +97,7 @@ create policy "equipo lee turnos"
   for select
   using (
     auth.uid() = user_id
-    or (
-      select count(*)
-      from public.miembros_equipo me
-      where me.user_id = usuarios_turnos.user_id
-        and exists (
-          select 1 from public.miembros_equipo m2
-          where m2.equipo_id = me.equipo_id and m2.user_id = auth.uid()
-        )
-    ) > 0
+    or public.comparten_equipo(user_id, auth.uid())
   );
 
 -- ─── Funciones RPC para el admin ───

@@ -1,6 +1,7 @@
 import { Sun, Moon, LogOut, User, Layers, Download } from 'lucide-react'
 import { useTheme } from '../hooks/useTheme'
 import { useInstallPWA } from '../hooks/useInstallPWA'
+import { useSwipe } from '../hooks/useSwipe'
 
 interface LayoutProps {
   children: React.ReactNode
@@ -8,11 +9,18 @@ interface LayoutProps {
   isOnline: boolean
   onOpenProfile: () => void
   onLogout: () => void
+  onTabSwipeLeft?: () => void
+  onTabSwipeRight?: () => void
 }
 
-export default function Layout({ children, userName, isOnline, onOpenProfile, onLogout }: LayoutProps) {
+export default function Layout({ children, userName, isOnline, onOpenProfile, onLogout, onTabSwipeLeft, onTabSwipeRight }: LayoutProps) {
   const { isDark, toggle } = useTheme()
   const { install, canInstall, isInstalled, isIOS } = useInstallPWA()
+
+  const tabSwipe = useSwipe({
+    onLeft: onTabSwipeLeft || (() => {}),
+    onRight: onTabSwipeRight || (() => {}),
+  })
 
   const iniciales = (userName || 'U').split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()
 
@@ -120,6 +128,9 @@ export default function Layout({ children, userName, isOnline, onOpenProfile, on
       <div
         className="container mx-auto px-4 max-w-5xl space-y-6 pb-[calc(1.5rem+env(safe-area-inset-bottom,0px))]"
         style={{ marginTop: 'calc(4.6rem + env(safe-area-inset-top, 0px))' }}
+        onTouchStart={tabSwipe.onTouchStart}
+        onTouchMove={tabSwipe.onTouchMove}
+        onTouchEnd={tabSwipe.onTouchEnd}
       >
         {children}
       </div>

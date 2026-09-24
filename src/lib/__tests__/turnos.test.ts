@@ -356,6 +356,26 @@ describe('planilla', () => {
     expect(resumen[1].conTurno).toEqual(['Ana Perez', 'Bruno Diaz'])
     expect(resumen[1].turnos).toBe(2)
   })
+
+  it('miembro virtual recibe su ciclo automáticamente en la planilla', () => {
+    // Ciclo '10' (3x3 real): día 1 = 'dia', día 2 = 'dia', día 3 = 'dia', día 4 = descanso
+    const planilla = construirPlanilla(
+      [
+        {
+          id: 'virtual-1',
+          nombre: 'Luis Muñoz',
+          datos: {},
+          virtual: { cicloId: '10', fechaInicio: '2026-01-01' },
+        },
+      ],
+      2026,
+      0
+    )
+    const fila = planilla.filas[0]
+    expect(fila.celdas[0]).toBe('D')
+    expect(fila.celdas[1]).toBe('D')
+    expect(fila.celdas[3]).toBe('') // día 4 = descanso
+  })
 })
 
 // ─── Feriados Ley Sana ───

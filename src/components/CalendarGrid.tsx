@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, useRef } from 'react'
 import type { TurnosData, PatronCiclo } from '../types'
 import { Lock } from 'lucide-react'
 import { obtenerDia } from '../lib/turnos'
@@ -16,6 +16,16 @@ interface CalendarGridProps {
 const DAY_LABELS = ['LU', 'MA', 'MI', 'JU', 'VI', 'SA', 'DO']
 
 export default function CalendarGrid({ year, month, turnos, patronActual, mesesBorrados, onOpenDay, onQuickExtra }: CalendarGridProps) {
+  const pressTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const longPressed = useRef(false)
+
+  const clearPress = () => {
+    if (pressTimer.current) {
+      clearTimeout(pressTimer.current)
+      pressTimer.current = null
+    }
+  }
+
   const calendar = useMemo(() => {
     const firstDay = (new Date(year, month, 1).getDay() + 6) % 7
     const totalDays = new Date(year, month + 1, 0).getDate()
@@ -70,9 +80,30 @@ export default function CalendarGrid({ year, month, turnos, patronActual, mesesB
             <div
               key={item.day}
               className={classes}
-              onClick={() => onOpenDay(item.day)}
+              onClick={() => {
+                // Si fue long-press no abrir dos veces
+                if (longPressed.current) {
+                  longPressed.current = false
+                  return
+                }
+                onOpenDay(item.day)
+              }}
+              onTouchStart={(e) => {
+                clearPress()
+                const day = item.day
+                pressTimer.current = setTimeout(() => {
+                  longPressed.current = true
+                  onOpenDay(day)
+                }, 600)
+              }}
+              onTouchMove={() => clearPress()}
+              onTouchEnd={() => clearPress()}
               onContextMenu={(e) => {
                 e.preventDefault()
+                if (longPressed.current) {
+                  longPressed.current = false
+                  return
+                }
                 onQuickExtra(item.day)
               }}
               style={{

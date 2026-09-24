@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useState } from 'react'
-import { ChevronLeft, ChevronRight, Printer, UserPlus, Trash2 } from 'lucide-react'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { ChevronLeft, ChevronRight, Printer, UserPlus, Trash2, Users } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { construirPlanilla, resumenPorDia } from '../lib/planilla'
 import {
@@ -10,9 +10,14 @@ import {
   quitarMiembro,
   crearCuentaYAgregar,
   cargarTurnosMiembros,
+  obtenerVirtuales,
+  crearVirtual,
+  actualizarVirtual,
+  eliminarVirtual,
 } from '../lib/equipo'
-import type { EquipoMiembro } from '../lib/equipo'
+import type { EquipoMiembro, MiembroVirtual } from '../lib/equipo'
 import type { MiembroRoster, PlanillaMes } from '../lib/planilla'
+import { CICLOS_LABELS } from '../types'
 
 const MESES = ['ENERO', 'FEBRERO', 'MARZO', 'ABRIL', 'MAYO', 'JUNIO', 'JULIO', 'AGOSTO', 'SEPTIEMBRE', 'OCTUBRE', 'NOVIEMBRE', 'DICIEMBRE']
 const DIAS = ['Do', 'Lu', 'Ma', 'Mi', 'Ju', 'Vi', 'Sa']
@@ -32,6 +37,7 @@ export default function EquipoTab() {
   const [disponible, setDisponible] = useState(true)
   const [loading, setLoading] = useState(true)
   const [miembros, setMiembros] = useState<EquipoMiembro[]>([])
+  const [virtuales, setVirtuales] = useState<MiembroVirtual[]>([])
   const [roster, setRoster] = useState<MiembroRoster[]>([])
   const [myUserId, setMyUserId] = useState<string | null>(null)
   const [msg, setMsg] = useState<string | null>(null)
@@ -42,6 +48,40 @@ export default function EquipoTab() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
 
+  // formulario persona sin app
+  const [vNombre, setVNombre] = useState('')
+  const [vCiclo, setVCiclo] = useState('10')
+  const [vFecha, setVFecha] = useState(today.toISOString().slice(0, 10))
+  const [editVirtualId, setEditVirtualId] = useState<string | null>(null)
+
+  // ─── Pinch-zoom de la planilla ───
+  const [zoom, setZoom] = useState(1)
+  const pinchRef = useRef<{ dist: number; zoom: number } | null>(null)
+
+  const pinchDist = (e: React.TouchEvent) => {
+    const a = e.touches[0]
+    const b = e.touches[1]
+    if (!a || !b) return 0
+    return Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY)
+  }
+
+  const clampZoom = (z: number) => Math.min(2.6, Math.max(0.7, z))
+
+  const onPinchStart = (e: React.TouchEvent) => {
+    if (e.touches.length !== 2) return
+    pinchRef.current = { dist: pinchDist(e), zoom }
+  }
+  const onPinchMove = (e: React.TouchEvent) => {
+    if (e.touches.length !== 2 || !pinchRef.current) return
+    e.preventDefault()
+    const d = pinchDist(e)
+    if (d === 0) return
+    setZoom(clampZoom((pinchRef.current.zoom * d) / pinchRef.current.dist))
+  }
+  const onPinchEnd = () => {
+    pinchRef.current = null
+  }
+
   const cargar = useCallback(async () => {
     setLoading(true)
     const { equipoId: id, disponible: disp } = await obtenerEquipoId()
@@ -50,7 +90,9 @@ export default function EquipoTab() {
     if (id) {
       const m = await obtenerMiembros(id)
       setMiembros(m)
-      const r = await cargarTurnosMiembros(m)
+      const v = await obtenerVirtuales(id)
+      setVirtuales(v)
+      const r = await cargarTurnosMiembros(m, v)
       setRoster(r)
     }
     setLoading(false)
@@ -111,6 +153,29 @@ export default function EquipoTab() {
     if (!equipoId) return
     const ok = await quitarMiembro(equipoId, userId)
     setMsg(ok ? 'Miembro eliminado' : 'No se pudo eliminar (¿eres el dueño?)')
+    if (ok) await cargar()
+  }
+
+  const handleGuardarVirtual = async () => {
+    if (!equipoId || !vNombre.trim()) {
+      setMsg('Ponle un nombre a la persona')
+      return
+    }
+    let r
+    if (editVirtualId) {
+      r = await actualizarVirtual(editVirtualId, vNombre, vCiclo, vFecha)
+    } else {
+      r = await crearVirtual(equipoId, vNombre, vCiclo, vFecha)
+    }
+    setMsg(r.ok ? (editVirtualId ? '✅ Persona actualizada' : '✅ Persona agregada (sin cuenta)') : r.error || 'Error')
+    setVNombre('')
+    setEditVirtualId(null)
+    await cargar()
+  }
+
+  const handleQuitarVirtual = async (id: string) => {
+    const ok = await eliminarVirtual(id)
+    setMsg(ok ? 'Persona eliminada' : 'No se pudo eliminar')
     if (ok) await cargar()
   }
 
@@ -245,6 +310,91 @@ export default function EquipoTab() {
             </div>
           </div>
 
+          {/* ─── PERSONAS SIN APP (VIRTUALES) ─── */}
+          <div className="p-5 rounded-xl shadow-sm border space-y-4"
+            style={{ backgroundColor: 'var(--bg-card)', borderColor: 'var(--border-color)' }}>
+            <h3 className="font-bold text-lg" style={{ color: 'var(--text-main)' }}>
+              Personas sin la app
+            </h3>
+            <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+              Agrégales su ciclo de turnos y aparecerán solas en la planilla del mes.
+            </p>
+
+            <div className="space-y-2 border rounded-xl p-3" style={{ borderColor: 'var(--border-color)' }}>
+              <div className="flex items-center gap-2 text-xs font-bold uppercase" style={{ color: 'var(--text-muted)' }}>
+                <Users className="w-3.5 h-3.5" /> {editVirtualId ? 'Editar persona' : 'Nueva persona'}
+              </div>
+              <input value={vNombre} onChange={(e) => setVNombre(e.target.value)} placeholder="Nombre (ej: Luis Muñoz)"
+                className="w-full p-3 rounded-xl outline-none text-sm"
+                style={{ backgroundColor: 'var(--bg-body)', border: '1px solid var(--border-color)', color: 'var(--text-main)' }} />
+              <select value={vCiclo} onChange={(e) => setVCiclo(e.target.value)}
+                className="w-full p-3 rounded-xl outline-none text-sm"
+                style={{ backgroundColor: 'var(--bg-body)', border: '1px solid var(--border-color)', color: 'var(--text-main)' }}>
+                {Object.entries(CICLOS_LABELS).map(([id, label]) => (
+                  <option key={id} value={id}>{label}</option>
+                ))}
+              </select>
+              <div className="flex gap-2 items-center">
+                <label className="text-[10px] font-bold flex-1" style={{ color: 'var(--text-muted)' }}>
+                  Inicio del ciclo
+                  <input type="date" value={vFecha} onChange={(e) => setVFecha(e.target.value)}
+                    className="w-full mt-1 p-3 rounded-xl outline-none text-sm"
+                    style={{ backgroundColor: 'var(--bg-body)', border: '1px solid var(--border-color)', color: 'var(--text-main)' }} />
+                </label>
+                {editVirtualId && (
+                  <button onClick={() => { setEditVirtualId(null); setVNombre(''); }}
+                    className="p-3 rounded-xl text-xs font-bold"
+                    style={{ color: 'var(--text-muted)', border: '1px solid var(--border-color)' }}>
+                    Cancelar
+                  </button>
+                )}
+              </div>
+              <button onClick={handleGuardarVirtual} className="w-full py-3 rounded-xl font-bold text-white transition"
+                style={{ backgroundColor: '#7c3aed' }}>
+                {editVirtualId ? 'GUARDAR CAMBIOS' : 'AGREGAR A LA PLANILLA'}
+              </button>
+            </div>
+
+            <div className="space-y-2">
+              {virtuales.map((v) => (
+                <div key={v.id} className="flex items-center justify-between gap-2 p-3 rounded-xl border"
+                  style={{ borderColor: 'var(--border-color)', backgroundColor: 'var(--bg-body)' }}>
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold"
+                      style={{ backgroundColor: 'rgba(124,58,237,.12)', color: '#7c3aed' }}>
+                      {(v.nombre || '?').slice(0, 2).toUpperCase()}
+                    </div>
+                    <div className="min-w-0">
+                      <div className="font-bold text-sm truncate" style={{ color: 'var(--text-main)' }}>{v.nombre}</div>
+                      <div className="text-[10px]" style={{ color: 'var(--text-muted)' }}>
+                        {(CICLOS_LABELS[v.ciclo_id] || v.ciclo_id).split(':')[0]} · desde {v.fecha_inicio}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <button onClick={() => {
+                      setEditVirtualId(v.id)
+                      setVNombre(v.nombre)
+                      setVCiclo(v.ciclo_id)
+                      setVFecha(v.fecha_inicio)
+                    }} className="p-2 rounded-lg text-sm" style={{ color: '#2563eb' }} title="Editar">
+                      ✏️
+                    </button>
+                    <button onClick={() => handleQuitarVirtual(v.id)} className="p-2 rounded-lg"
+                      style={{ color: '#ef4444' }} title="Eliminar">
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              ))}
+              {virtuales.length === 0 && (
+                <p className="text-xs text-center py-3" style={{ color: 'var(--text-muted)' }}>
+                  Todavía no hay personas sin app.
+                </p>
+              )}
+            </div>
+          </div>
+
           {/* ─── PLANILLA DEL MES ─── */}
           <div className="p-4 rounded-xl shadow-sm border print-area planilla"
             style={{ backgroundColor: 'var(--bg-card)', borderColor: 'var(--border-color)' }}>
@@ -275,8 +425,18 @@ export default function EquipoTab() {
 
             {planilla ? (
               <>
-                <div className="overflow-x-auto">
-                  <table className="planilla-tabla" width="100%">
+                <div
+                  className="overflow-x-auto"
+                  style={{ touchAction: pinchRef.current ? 'none' : 'auto' }}
+                >
+                  <div
+                    className="planilla-zoom"
+                    onTouchStart={onPinchStart}
+                    onTouchMove={onPinchMove}
+                    onTouchEnd={onPinchEnd}
+                    style={{ transform: `scale(${zoom})`, transformOrigin: 'top left', width: `${100 / zoom}%` }}
+                  >
+                    <table className="planilla-tabla" width="100%">
                     <thead>
                       <tr>
                         <th className="pl-nombre">Trabajador</th>
@@ -311,6 +471,42 @@ export default function EquipoTab() {
                       ))}
                     </tbody>
                   </table>
+                  </div>
+                  <div className="flex items-center gap-1 mt-2 no-print">
+                    <button
+                      onClick={() => setZoom((z) => clampZoom(z - 0.2))}
+                      className="w-8 h-8 rounded-lg font-bold text-sm"
+                      style={{ backgroundColor: 'rgba(37,99,235,.1)', color: '#2563eb' }}
+                      title="Alejar"
+                    >
+                      −
+                    </button>
+                    <span className="text-[10px] font-bold px-2" style={{ color: 'var(--text-muted)' }}>
+                      {Math.round(zoom * 100)}%
+                    </span>
+                    <button
+                      onClick={() => setZoom((z) => clampZoom(z + 0.2))}
+                      className="w-8 h-8 rounded-lg font-bold text-sm"
+                      style={{ backgroundColor: 'rgba(37,99,235,.1)', color: '#2563eb' }}
+                      title="Acercar (o usa dos dedos)"
+                    >
+                      +
+                    </button>
+                    {zoom !== 1 && (
+                      <button
+                        onClick={() => setZoom(1)}
+                        className="ml-auto px-3 py-1.5 rounded-full text-[10px] font-bold"
+                        style={{ backgroundColor: 'rgba(107,114,128,.12)', color: 'var(--text-muted)' }}
+                      >
+                        Restablecer
+                      </button>
+                    )}
+                    {zoom > 1 && (
+                      <p className="text-[10px] text-center" style={{ color: 'var(--text-muted)' }}>
+                        Desliza la tabla para ver más
+                      </p>
+                    )}
+                  </div>
                 </div>
 
                 <div className="flex flex-wrap gap-3 mt-3 text-[10px] font-bold" style={{ color: 'var(--text-muted)' }}>

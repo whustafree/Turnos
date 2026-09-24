@@ -1,7 +1,8 @@
 import { useState, useMemo, useEffect, useRef, useCallback } from 'react'
-import { ChevronLeft, ChevronRight, Trash2, Printer, Bell, BellRing } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Trash2, Printer, Bell, BellRing, ChevronUp, ChevronDown } from 'lucide-react'
 import { useAuth } from './hooks/useAuth'
 import { useCalendar } from './hooks/useCalendar'
+import { useSwipe } from './hooks/useSwipe'
 import { obtenerDia } from './lib/turnos'
 import { isNative, nativeReminderEnabled, scheduleDailyReminder } from './lib/native'
 import type { TurnoTipo, TurnosData } from './types'
@@ -19,6 +20,13 @@ import AdminConfigPanel from './components/AdminConfigPanel'
 import EquipoTab from './components/EquipoTab'
 
 type Tab = 'calendario' | 'planificar' | 'ausencias' | 'administrador' | 'equipo'
+const TABS: { id: Tab; label: string }[] = [
+  { id: 'calendario', label: 'Calendario' },
+  { id: 'planificar', label: 'Planificar' },
+  { id: 'ausencias', label: 'Ausencias' },
+  { id: 'administrador', label: 'Admin' },
+  { id: 'equipo', label: 'Equipo' },
+]
 
 export default function App() {
   const { user, loading: authLoading, userId, logout } = useAuth()
@@ -56,6 +64,17 @@ export default function App() {
   const [month, setMonth] = useState(today.getMonth())
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
   const errorTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // ─── Modo compacto: minimizar la info para dejar el calendario grande ───
+  const [minimized, setMinimized] = useState<boolean>(
+    () => localStorage.getItem('turnos_minimized') === '1'
+  )
+  const toggleMinimized = () => {
+    setMinimized((prev) => {
+      localStorage.setItem('turnos_minimized', prev ? '0' : '1')
+      return !prev
+    })
+  }
 
   // ─── Month/Year labels ───
   const monthLabel = useMemo(
@@ -148,6 +167,43 @@ export default function App() {
     applyAccent(localStorage.getItem('turnos_accent') || '#2563eb')
   }, [applyAccent])
 
+  // ─── Gestos: swipe entre pestañas ───
+  const swipedAtRef = useRef(0)
+  const nextTab = () => {
+    const idx = TABS.findIndex((t) => t.id === activeTab)
+    setActiveTab(TABS[(idx + 1) % TABS.length].id)
+  }
+  const prevTab = () => {
+    const idx = TABS.findIndex((t) => t.id === activeTab)
+    setActiveTab(TABS[(idx - 1 + TABS.length) % TABS.length].id)
+  }
+  const tabSwipe = useSwipe({ onLeft: nextTab, onRight: prevTab })
+
+  // ─── Gestos: swipe para cambiar de mes ───
+  const monthSwipe = useSwipe({
+    onLeft: () => {
+      swipedAtRef.current = Date.now()
+      changeMonth(1)
+    },
+    onRight: () => {
+      swipedAtRef.current = Date.now()
+      changeMonth(-1)
+    },
+  })
+  const stopMonthSwipe = (e: React.TouchEvent) => e.stopPropagation()
+  const monthSwipeStart = (e: React.TouchEvent) => {
+    stopMonthSwipe(e)
+    monthSwipe.onTouchStart(e)
+  }
+  const monthSwipeMove = (e: React.TouchEvent) => {
+    stopMonthSwipe(e)
+    monthSwipe.onTouchMove(e)
+  }
+  const monthSwipeEnd = (e: React.TouchEvent) => {
+    stopMonthSwipe(e)
+    monthSwipe.onTouchEnd(e)
+  }
+
   // ─── Handler: EXTRA rápido (tocar y mantener) ───
   const handleQuickExtra = (day: number) => {
     const data = obtenerDia(turnos, year, month, day, perfil.patronActual, perfil.mesesBorrados || [])
@@ -194,6 +250,8 @@ export default function App() {
   }
 
   const handleDayClick = (day: number) => {
+    // Ignora el click fantasma que sigue a un swipe de mes
+    if (Date.now() - swipedAtRef.current < 400) return
     openDay(day)
   }
 
@@ -207,6 +265,12 @@ export default function App() {
       if (!confirm('Límite alcanzado. ¿Continuar?')) return
     }
     marcarAdmin(y, m, d)
+    setShowTurnoModal(false)
+  }
+
+  const handleMarcarVacaciones = (y: number, m: number, d: number) => {
+    const start = new Date(y, m, d)
+    saveVacaciones(start, start, true)
     setShowTurnoModal(false)
   }
 
@@ -283,6 +347,8 @@ export default function App() {
         isOnline={isOnline}
         onOpenProfile={handleOpenProfile}
         onLogout={handleLogout}
+        onTabSwipeLeft={nextTab}
+        onTabSwipeRight={prevTab}
       >
         {/* Error toast */}
         {errorMsg && (
@@ -299,21 +365,23 @@ export default function App() {
           </div>
         )}
 
-        {/* ═══ DASHBOARD ═══ */}
-        <Dashboard
-          stats={stats}
-          userName={perfil.nombre}
-          userCargo={perfil.cargo}
-          userEmpresa={perfil.empresa}
-          onOpenProfile={handleOpenProfile}
-          onGoCalendar={() => {
-            setActiveTab('calendario')
-            goToToday()
-          }}
-          turnos={turnos}
-          profile={perfil}
-          onImport={handleImport}
-        />
+        {/* ═══ DASHBOARD (minimizable) ═══ */}
+        {!minimized && (
+          <Dashboard
+            stats={stats}
+            userName={perfil.nombre}
+            userCargo={perfil.cargo}
+            userEmpresa={perfil.empresa}
+            onOpenProfile={handleOpenProfile}
+            onGoCalendar={() => {
+              setActiveTab('calendario')
+              goToToday()
+            }}
+            turnos={turnos}
+            profile={perfil}
+            onImport={handleImport}
+          />
+        )}
 
         {/* ═══ MONTH NAVIGATOR ═══ */}
         <div
@@ -349,6 +417,14 @@ export default function App() {
           </div>
 
           <div className="flex gap-1 pr-2">
+            <button
+              onClick={toggleMinimized}
+              title={minimized ? 'Mostrar mi información' : 'Minimizar información'}
+              className="w-10 h-10 flex items-center justify-center rounded-lg transition"
+              style={{ color: minimized ? '#2563eb' : 'var(--text-muted)' }}
+            >
+              {minimized ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />}
+            </button>
             <button
               onClick={() => window.print()}
               title="Imprimir / guardar PDF del mes"
@@ -393,7 +469,7 @@ export default function App() {
         </div>
 
         {/* ═══ MIS CICLOS (múltiples ciclos activos) ═══ */}
-        {(perfil.patrones || []).length > 0 && (
+        {!minimized && (perfil.patrones || []).length > 0 && (
           <div className="no-print flex flex-wrap items-center gap-2">
             <span className="text-[10px] font-bold uppercase tracking-widest" style={{ color: 'var(--text-muted)' }}>
               Ciclo activo:
@@ -432,30 +508,32 @@ export default function App() {
         )}
 
         {/* ═══ TURNO DE HOY + RECORDATORIO ═══ */}
-        <div className="no-print flex items-center justify-between gap-2 p-3 rounded-xl border shadow-sm"
-          style={{
-            backgroundColor: 'var(--bg-card)',
-            borderColor: hoyInfo.isWork ? hoyInfo.color : 'var(--border-color)',
-          }}>
-          <div className="flex items-center gap-2">
-            <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: hoyInfo.color }} />
-            <span className="font-bold text-sm uppercase tracking-wide" style={{ color: hoyInfo.color }}>
-              {hoyInfo.label}
-            </span>
-          </div>
-          <button
-            onClick={handleEnableNotifications}
-            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-[11px] font-bold transition"
+        {!minimized && (
+          <div className="no-print flex items-center justify-between gap-2 p-3 rounded-xl border shadow-sm"
             style={{
-              backgroundColor: 'rgba(37, 99, 235, 0.1)',
-              color: '#2563eb',
-            }}
-            title="Activar recordatorio del turno del día"
-          >
-            {localStorage.getItem('turnos_notif') === '1' ? <BellRing className="w-3.5 h-3.5" /> : <Bell className="w-3.5 h-3.5" />}
-            Recordar
-          </button>
-        </div>
+              backgroundColor: 'var(--bg-card)',
+              borderColor: hoyInfo.isWork ? hoyInfo.color : 'var(--border-color)',
+            }}>
+            <div className="flex items-center gap-2">
+              <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: hoyInfo.color }} />
+              <span className="font-bold text-sm uppercase tracking-wide" style={{ color: hoyInfo.color }}>
+                {hoyInfo.label}
+              </span>
+            </div>
+            <button
+              onClick={handleEnableNotifications}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-[11px] font-bold transition"
+              style={{
+                backgroundColor: 'rgba(37, 99, 235, 0.1)',
+                color: '#2563eb',
+              }}
+              title="Activar recordatorio del turno del día"
+            >
+              {localStorage.getItem('turnos_notif') === '1' ? <BellRing className="w-3.5 h-3.5" /> : <Bell className="w-3.5 h-3.5" />}
+              Recordar
+            </button>
+          </div>
+        )}
 
         {/* ═══ ERROR DE SINCRONIZACIÓN ═══ */}
         {syncError && (
@@ -471,13 +549,7 @@ export default function App() {
 
         {/* ═══ TABS ═══ */}
         <div className="grid grid-cols-5 gap-1.5">
-          {([
-            { id: 'calendario' as Tab, label: 'Calendario' },
-            { id: 'planificar' as Tab, label: 'Planificar' },
-            { id: 'ausencias' as Tab, label: 'Ausencias' },
-            { id: 'administrador' as Tab, label: 'Admin' },
-            { id: 'equipo' as Tab, label: 'Equipo' },
-          ]).map((tab) => (
+          {TABS.map((tab) => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
@@ -495,7 +567,12 @@ export default function App() {
 
         {/* ═══ TAB CONTENT ═══ */}
         {activeTab === 'calendario' && (
-          <div className="print-area">
+          <div
+            className="print-area"
+            onTouchStart={monthSwipeStart}
+            onTouchMove={monthSwipeMove}
+            onTouchEnd={monthSwipeEnd}
+          >
             <div className="print-month">{monthLabel}</div>
             <CalendarGrid
               year={year}
@@ -618,6 +695,7 @@ export default function App() {
         turnos={turnos}
         onAddTurno={handleAddTurno}
         onMarcarAdmin={handleMarcarAdmin}
+        onMarcarVacaciones={handleMarcarVacaciones}
         onRemove={handleRemoveTurno}
         onClose={() => setShowTurnoModal(false)}
       />

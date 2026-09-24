@@ -1,9 +1,24 @@
 import type { TurnosData } from '../types'
+import { aplicarCiclo } from './turnos'
 
 export interface MiembroRoster {
   id: string
   nombre: string
   datos: TurnosData
+  /** Miembro virtual (sin app): se le aplica su ciclo a la planilla automáticamente */
+  virtual?: {
+    cicloId: string
+    fechaInicio: string
+  }
+}
+
+// Los virtuales no guardan datos por día: el patrón se calcula solo para el mes visible
+function datosDeMiembro(m: MiembroRoster, year: number, month: number): TurnosData {
+  if (!m.virtual) return m.datos || {}
+  return aplicarCiclo({}, year, month, {
+    fechaInicio: m.virtual.fechaInicio,
+    cicloId: m.virtual.cicloId,
+  })
 }
 
 export type PlanillaCelda = 'D' | 'N' | 'DN' | 'V' | 'AD' | ''
@@ -45,7 +60,9 @@ export function construirPlanilla(miembros: MiembroRoster[], year: number, month
     .map((m) => ({
       miembroId: m.id,
       nombre: m.nombre,
-      celdas: Array.from({ length: totalDias }, (_, i) => celdaDeDia(m.datos, year, month, i + 1)),
+      celdas: Array.from({ length: totalDias }, (_, i) =>
+        celdaDeDia(datosDeMiembro(m, year, month), year, month, i + 1)
+      ),
     }))
   return { year, month, totalDias, primerDiaSemana, filas }
 }

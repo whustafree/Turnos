@@ -9,6 +9,7 @@ interface TurnoModalProps {
   turnos: TurnosData
   onAddTurno: (year: number, month: number, day: number, tipo: TurnoTipo) => void
   onMarcarAdmin: (year: number, month: number, day: number) => void
+  onMarcarVacaciones: (year: number, month: number, day: number) => void
   onRemove: (year: number, month: number, day: number) => void
   onClose: () => void
 }
@@ -21,6 +22,7 @@ export default function TurnoModal({
   turnos,
   onAddTurno,
   onMarcarAdmin,
+  onMarcarVacaciones,
   onRemove,
   onClose,
 }: TurnoModalProps) {
@@ -110,18 +112,47 @@ export default function TurnoModal({
           </button>
         </div>
 
-        <button
-          onClick={() => onMarcarAdmin(year, month, day)}
-          disabled={isLocked}
-          className="w-full mb-4 p-3 rounded-lg font-bold text-sm flex items-center justify-center gap-2 transition disabled:opacity-40"
-          style={{
-            backgroundColor: 'rgba(37, 99, 235, 0.1)',
-            color: '#2563eb',
-            border: '1px solid rgba(37, 99, 235, 0.2)',
-          }}
-        >
-          📋 DÍA ADMIN
-        </button>
+        <div className="grid grid-cols-2 gap-2 mb-4">
+          <button
+            onClick={() => onMarcarAdmin(year, month, day)}
+            disabled={isLocked}
+            className="p-3 rounded-lg font-bold text-sm flex items-center justify-center gap-2 transition disabled:opacity-40"
+            style={{
+              backgroundColor: 'rgba(37, 99, 235, 0.1)',
+              color: '#2563eb',
+              border: '1px solid rgba(37, 99, 235, 0.2)',
+            }}
+          >
+            📋 DÍA ADMIN
+          </button>
+          {dayData?.tipo !== 'vacaciones' ? (
+            <button
+              onClick={() => onMarcarVacaciones(year, month, day)}
+              disabled={isLocked}
+              className="p-3 rounded-lg font-bold text-sm flex items-center justify-center gap-2 transition disabled:opacity-40"
+              style={{
+                backgroundColor: 'rgba(202, 138, 4, 0.12)',
+                color: '#a16207',
+                border: '1px solid rgba(202, 138, 4, 0.25)',
+              }}
+            >
+              🌴 VACACIONES
+            </button>
+          ) : (
+            <button
+              onClick={() => onRemove(year, month, day)}
+              disabled={isLocked}
+              className="p-3 rounded-lg font-bold text-sm flex items-center justify-center gap-2 transition disabled:opacity-40"
+              style={{
+                backgroundColor: 'rgba(202, 138, 4, 0.12)',
+                color: '#a16207',
+                border: '1px solid rgba(202, 138, 4, 0.25)',
+              }}
+            >
+              🌴 VACACIONES ✓
+            </button>
+          )}
+        </div>
 
         <div className="pt-3 mt-2" style={{ borderTop: '1px solid var(--border-color)' }}>
           <button
