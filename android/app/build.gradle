@@ -52,6 +52,13 @@ android {
                 signingConfig signingConfigs.release
             }
         }
+        // Firma estable también para debug: así las actualizaciones (misma firma)
+        // se instalan encima de la versión anterior sin desinstalar.
+        debug {
+            if (hasKeystore) {
+                signingConfig signingConfigs.release
+            }
+        }
     }
 }
 

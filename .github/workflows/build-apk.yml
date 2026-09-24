@@ -93,8 +93,12 @@ jobs:
             echo "KEYSTORE_DECODED=true" >> $GITHUB_ENV
           fi
 
-      # ─── Build Debug APK ───
+      # ─── Build Debug APK (firmada con la misma firma estable cuando hay keystore) ───
       - name: Build Debug APK
+        env:
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: |
           cd android
           chmod +x gradlew
