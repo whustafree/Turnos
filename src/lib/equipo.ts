@@ -82,6 +82,20 @@ export async function quitarMiembro(equipoId: string, userId: string): Promise<b
   }
 }
 
+// El dueño cambia la contraseña de un miembro de su equipo
+export async function cambiarPasswordMiembro(userId: string, nuevaPassword: string): Promise<{ ok: boolean; error?: string }> {
+  try {
+    const { error } = await supabase.rpc('cambiar_password_miembro', {
+      p_user_id: userId,
+      p_nueva_password: nuevaPassword,
+    })
+    if (error) return { ok: false, error: (error as any).message || error.message }
+    return { ok: true }
+  } catch (e: any) {
+    return { ok: false, error: e?.message || 'Error al cambiar la contraseña' }
+  }
+}
+
 // El admin crea la cuenta (signUp con la clave pública) y luego invita al equipo
 export async function crearCuentaYAgregar(
   equipoId: string,

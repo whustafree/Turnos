@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { ChevronLeft, ChevronRight, Printer, UserPlus, Trash2, Users } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Printer, UserPlus, Trash2, Users, KeyRound, X } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { construirPlanilla, resumenPorDia } from '../lib/planilla'
 import { imprimirPlanilla } from '../lib/print'
@@ -9,6 +9,7 @@ import {
   obtenerMiembros,
   agregarMiembro,
   quitarMiembro,
+  cambiarPasswordMiembro,
   crearCuentaYAgregar,
   cargarTurnosMiembros,
   obtenerVirtuales,
@@ -54,6 +55,10 @@ export default function EquipoTab() {
   const [vCiclo, setVCiclo] = useState('10')
   const [vFecha, setVFecha] = useState(today.toISOString().slice(0, 10))
   const [editVirtualId, setEditVirtualId] = useState<string | null>(null)
+
+  // modal cambiar contraseña
+  const [passModal, setPassModal] = useState<{ userId: string; nombre: string } | null>(null)
+  const [nuevaPass, setNuevaPass] = useState('')
 
   // ─── Pinch-zoom de la planilla ───
   const [zoom, setZoom] = useState(1)
@@ -113,6 +118,7 @@ export default function EquipoTab() {
 
   const planilla: PlanillaMes | null = equipoId ? construirPlanilla(roster, year, month) : null
   const resumen = planilla ? resumenPorDia(planilla) : null
+  const soyOwner = myUserId != null && miembros.some((m) => m.user_id === myUserId && m.rol === 'owner')
 
   const handleCrearEquipo = async () => {
     const id = await crearEquipo(nombreEquipo)
@@ -155,6 +161,18 @@ export default function EquipoTab() {
     const ok = await quitarMiembro(equipoId, userId)
     setMsg(ok ? 'Miembro eliminado' : 'No se pudo eliminar (¿eres el dueño?)')
     if (ok) await cargar()
+  }
+
+  const handleCambiarPassword = async () => {
+    if (!passModal) return
+    if (nuevaPass.length < 6) {
+      setMsg('La contraseña debe tener al menos 6 caracteres')
+      return
+    }
+    const r = await cambiarPasswordMiembro(passModal.userId, nuevaPass)
+    setMsg(r.ok ? '✅ Contraseña actualizada. Avisa al miembro la nueva contraseña.' : r.error || 'Error')
+    setPassModal(null)
+    setNuevaPass('')
   }
 
   const handleGuardarVirtual = async () => {
@@ -294,11 +312,17 @@ export default function EquipoTab() {
                         <div className="text-[10px]" style={{ color: 'var(--text-muted)' }}>{r.id.slice(0, 8)}</div>
                       </div>
                     </div>
-                    {!esOwner && myUserId !== r.id && (
-                      <button onClick={() => handleQuitar(r.id)} className="p-2 rounded-lg"
-                        style={{ color: '#ef4444' }} title="Quitar del equipo">
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                    {!esOwner && soyOwner && myUserId !== r.id && (
+                      <div className="flex items-center gap-1 shrink-0">
+                        <button onClick={() => { setPassModal({ userId: r.id, nombre: r.nombre }); setNuevaPass('') }}
+                          className="p-2 rounded-lg" style={{ color: '#2563eb' }} title="Cambiar contraseña">
+                          <KeyRound className="w-4 h-4" />
+                        </button>
+                        <button onClick={() => handleQuitar(r.id)} className="p-2 rounded-lg"
+                          style={{ color: '#ef4444' }} title="Quitar del equipo">
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
                     )}
                   </div>
                 )
@@ -544,6 +568,49 @@ export default function EquipoTab() {
 
       {loading && (
         <p className="text-center text-sm py-10" style={{ color: 'var(--text-muted)' }}>Cargando equipo…</p>
+      )}
+
+      {/* ─── MODAL CAMBIAR CONTRASEÑA ─── */}
+      {passModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}
+          onClick={() => setPassModal(null)}
+        >
+          <div
+            className="p-6 rounded-2xl w-full max-w-sm shadow-2xl animate-slide-up border"
+            style={{ backgroundColor: 'var(--bg-card)', borderColor: 'var(--border-color)' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-bold" style={{ color: 'var(--text-main)' }}>
+                Cambiar contraseña
+              </h3>
+              <button onClick={() => setPassModal(null)} className="transition" style={{ color: 'var(--text-muted)' }}>
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <p className="text-xs mb-4" style={{ color: 'var(--text-muted)' }}>
+              Nueva contraseña para <b style={{ color: 'var(--text-main)' }}>{passModal.nombre}</b>. Deberás avisarle el nuevo valor.
+            </p>
+            <input
+              type="password"
+              placeholder="Nueva contraseña (mín. 6 caracteres)"
+              value={nuevaPass}
+              onChange={(e) => setNuevaPass(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleCambiarPassword()}
+              className="w-full p-3 rounded-xl outline-none text-sm mb-4"
+              style={{ backgroundColor: 'var(--bg-body)', border: '1px solid var(--border-color)', color: 'var(--text-main)' }}
+              autoFocus
+            />
+            <button
+              onClick={handleCambiarPassword}
+              className="w-full py-3 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 transition flex items-center justify-center gap-2"
+            >
+              <KeyRound className="w-4 h-4" /> GUARDAR CONTRASEÑA
+            </button>
+          </div>
+        </div>
       )}
     </div>
   )
