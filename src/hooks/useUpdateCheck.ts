@@ -1,7 +1,14 @@
 import { useEffect, useState } from 'react'
 import { isNative } from '../lib/native'
 
-const REMOTE_VERSION_URL = 'https://github.com/whustafree/Turnos/releases/download/apk-latest/version.json'
+const REMOTE_TAGS_URL = 'https://api.github.com/repos/whustafree/Turnos/tags?per_page=50'
+const CHECK_CACHE_KEY = 'turnos_update_check_cache'
+const CHECK_CACHE_TTL = 6 * 60 * 60 * 1000
+
+interface CachedCheck {
+  ts: number
+  latest: string
+}
 
 export interface UpdateStatus {
   checking: boolean
@@ -21,6 +28,27 @@ export function compareVersions(a: string, b: string): number {
     if (x !== y) return x - y
   }
   return 0
+}
+
+function readCache(): CachedCheck | null {
+  try {
+    const raw = localStorage.getItem(CHECK_CACHE_KEY)
+    if (!raw) return null
+    const parsed = JSON.parse(raw) as CachedCheck
+    if (typeof parsed.ts !== 'number' || typeof parsed.latest !== 'string') return null
+    if (Date.now() - parsed.ts > CHECK_CACHE_TTL) return null
+    return parsed
+  } catch {
+    return null
+  }
+}
+
+function writeCache(latest: string) {
+  try {
+    localStorage.setItem(CHECK_CACHE_KEY, JSON.stringify({ ts: Date.now(), latest } as CachedCheck))
+  } catch {
+    /* sin almacenamiento disponible */
+  }
 }
 
 export function useUpdateCheck(): UpdateStatus {
@@ -50,10 +78,22 @@ export function useUpdateCheck(): UpdateStatus {
       let latest = ''
       let downloadUrl = ''
       try {
-        const remoteRes = await fetch(REMOTE_VERSION_URL, { cache: 'no-store' })
-        if (remoteRes.ok) {
-          const remote = await remoteRes.json()
-          latest = remote.version || ''
+        const cached = readCache()
+        if (cached) {
+          latest = cached.latest
+        } else {
+          const remoteRes = await fetch(REMOTE_TAGS_URL, { cache: 'no-store' })
+          if (remoteRes.ok) {
+            const tags = (await remoteRes.json()) as { name: string }[]
+            const versions = tags
+              .map((t) => t.name)
+              .filter((n) => /^0\.\d+$/.test(n))
+            if (versions.length > 0) {
+              versions.sort((a, b) => compareVersions(b, a))
+              latest = versions[0]
+            }
+            writeCache(latest)
+          }
         }
         downloadUrl = `https://github.com/whustafree/Turnos/releases/download/apk-latest/TurnosApp-Debug.apk`
       } catch {

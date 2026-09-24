@@ -10,6 +10,7 @@ import { imprimirCalendario } from './lib/print'
 import type { TurnoTipo, TurnosData } from './types'
 import { CICLOS_LABELS } from './types'
 import LoginPage from './components/LoginPage'
+import UpdatePasswordPage from './components/UpdatePasswordPage'
 import Layout from './components/Layout'
 import Dashboard from './components/Dashboard'
 import CalendarGrid from './components/CalendarGrid'
@@ -31,7 +32,7 @@ const TABS: { id: Tab; label: string }[] = [
 ]
 
 export default function App() {
-  const { user, loading: authLoading, userId, logout } = useAuth()
+  const { user, loading: authLoading, passwordRecovery, completePasswordRecovery, userId, logout } = useAuth()
   const {
     turnos,
     perfil,
@@ -343,6 +344,10 @@ export default function App() {
         <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Cargando...</p>
       </div>
     )
+  }
+
+  if (passwordRecovery) {
+    return <UpdatePasswordPage onDone={completePasswordRecovery} onError={showError} />
   }
 
   if (!user) {
