@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { ChevronLeft, ChevronRight, Printer, UserPlus, Trash2, Users } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { construirPlanilla, resumenPorDia } from '../lib/planilla'
+import { imprimirPlanilla } from '../lib/print'
 import {
   obtenerEquipoId,
   crearEquipo,
@@ -416,7 +417,7 @@ export default function EquipoTab() {
                   <ChevronRight className="w-4 h-4" />
                 </button>
               </div>
-              <button onClick={() => window.print()}
+              <button onClick={() => planilla && imprimirPlanilla(planilla, nombreEquipo)}
                 className="flex items-center gap-1.5 px-3 py-2 rounded-xl font-bold text-xs transition"
                 style={{ backgroundColor: 'rgba(37,99,235,.1)', color: '#2563eb' }}>
                 <Printer className="w-4 h-4" /> Imprimir planilla

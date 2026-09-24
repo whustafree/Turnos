@@ -6,6 +6,7 @@ import { useSwipe } from './hooks/useSwipe'
 import { useUpdateCheck } from './hooks/useUpdateCheck'
 import { obtenerDia } from './lib/turnos'
 import { isNative, nativeReminderEnabled, scheduleDailyReminder } from './lib/native'
+import { imprimirCalendario } from './lib/print'
 import type { TurnoTipo, TurnosData } from './types'
 import { CICLOS_LABELS } from './types'
 import LoginPage from './components/LoginPage'
@@ -458,7 +459,20 @@ export default function App() {
               {minimized ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />}
             </button>
             <button
-              onClick={() => window.print()}
+              onClick={() =>
+                imprimirCalendario(
+                  {
+                    year,
+                    month,
+                    nombre: perfil.nombre,
+                    cargo: perfil.cargo,
+                    empresa: perfil.empresa,
+                  },
+                  turnos,
+                  perfil.patronActual,
+                  perfil.mesesBorrados || []
+                )
+              }
               title="Imprimir / guardar PDF del mes"
               className="w-10 h-10 flex items-center justify-center rounded-lg transition"
               style={{ color: 'var(--text-muted)' }}
