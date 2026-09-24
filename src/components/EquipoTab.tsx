@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { ChevronLeft, ChevronRight, Printer, UserPlus, Trash2, Users, KeyRound, X } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Printer, UserPlus, Trash2, Users, KeyRound, X, Repeat, Pencil, Download } from 'lucide-react'
 import { supabase } from '../lib/supabase'
-import { construirPlanilla, resumenPorDia } from '../lib/planilla'
+import { construirPlanilla, resumenPorDia, diasSinCobertura, diasSinNadie, descargarPlanillaCSV } from '../lib/planilla'
 import { imprimirPlanilla } from '../lib/print'
 import {
   obtenerEquipoId,
@@ -16,10 +16,12 @@ import {
   crearVirtual,
   actualizarVirtual,
   eliminarVirtual,
+  intercambiarTurnosMiembros,
+  actualizarPerfilMiembro,
 } from '../lib/equipo'
 import type { EquipoMiembro, MiembroVirtual } from '../lib/equipo'
 import type { MiembroRoster, PlanillaMes } from '../lib/planilla'
-import { CICLOS_LABELS } from '../types'
+import { listarCiclos, etiquetaCiclo } from '../types'
 
 const MESES = ['ENERO', 'FEBRERO', 'MARZO', 'ABRIL', 'MAYO', 'JUNIO', 'JULIO', 'AGOSTO', 'SEPTIEMBRE', 'OCTUBRE', 'NOVIEMBRE', 'DICIEMBRE']
 const DIAS = ['Do', 'Lu', 'Ma', 'Mi', 'Ju', 'Vi', 'Sa']
@@ -192,10 +194,49 @@ export default function EquipoTab() {
     await cargar()
   }
 
+  const [permutarOpen, setPermutarOpen] = useState(false)
+  const [permutarFecha, setPermutarFecha] = useState(today.toISOString().slice(0, 10))
+  const [permutarA, setPermutarA] = useState('')
+  const [permutarB, setPermutarB] = useState('')
+
+  // modal editar perfil de miembro (solo dueño)
+  const [perfilModal, setPerfilModal] = useState<{ userId: string; nombre: string; cargo: string; empresa: string } | null>(null)
+
   const handleQuitarVirtual = async (id: string) => {
     const ok = await eliminarVirtual(id)
     setMsg(ok ? 'Persona eliminada' : 'No se pudo eliminar')
     if (ok) await cargar()
+  }
+
+  const handlePermutar = async () => {
+    if (!equipoId) return
+    if (!permutarFecha || !permutarA || !permutarB) {
+      setMsg('Elige una fecha y dos miembros para permutar')
+      return
+    }
+    if (permutarA === permutarB) {
+      setMsg('Los dos miembros deben ser distintos')
+      return
+    }
+    const [yy, mm, dd] = permutarFecha.split('-').map(Number)
+    const r = await intercambiarTurnosMiembros(equipoId, permutarA, permutarB, yy, mm - 1, dd)
+    setMsg(r.ok ? '✅ Turnos intercambiados' : r.error || 'No se pudo permutar (¿ejecutaste supabase/permutas.sql?)')
+    if (r.ok) {
+      setPermutarOpen(false)
+      await cargar()
+    }
+  }
+
+  const handleGuardarPerfil = async () => {
+    if (!equipoId || !perfilModal) return
+    const r = await actualizarPerfilMiembro(equipoId, perfilModal.userId, {
+      nombre: perfilModal.nombre.trim() || undefined,
+      cargo: perfilModal.cargo.trim() || undefined,
+      empresa: perfilModal.empresa.trim() || undefined,
+    })
+    setMsg(r.ok ? '✅ Perfil actualizado' : r.error || 'No se pudo editar (¿ejecutaste supabase/perfil_miembro.sql?)')
+    setPerfilModal(null)
+    if (r.ok) await cargar()
   }
 
   const prevMonth = () => {
@@ -214,6 +255,9 @@ export default function EquipoTab() {
       setMonth((m) => m + 1)
     }
   }
+
+  const diasSinCoberturaDia = planilla ? diasSinCobertura(planilla) : []
+  const diasSinNadieDia = planilla ? diasSinNadie(planilla) : []
 
   return (
     <div className="space-y-4">
@@ -309,19 +353,29 @@ export default function EquipoTab() {
                         <div className="font-bold text-sm truncate" style={{ color: 'var(--text-main)' }}>
                           {r.nombre} {esOwner && <span className="text-[9px] text-blue-500 uppercase">· dueño</span>}
                         </div>
-                        <div className="text-[10px]" style={{ color: 'var(--text-muted)' }}>{r.id.slice(0, 8)}</div>
+                        <div className="text-[10px] truncate" style={{ color: 'var(--text-muted)' }}>
+                          {[r.cargo, r.empresa].filter(Boolean).join(' · ') || r.id.slice(0, 8)}
+                        </div>
                       </div>
                     </div>
-                    {!esOwner && soyOwner && myUserId !== r.id && (
+                    {soyOwner && myUserId !== r.id && (
                       <div className="flex items-center gap-1 shrink-0">
-                        <button onClick={() => { setPassModal({ userId: r.id, nombre: r.nombre }); setNuevaPass('') }}
-                          className="p-2 rounded-lg" style={{ color: '#2563eb' }} title="Cambiar contraseña">
-                          <KeyRound className="w-4 h-4" />
+                        <button onClick={() => setPerfilModal({ userId: r.id, nombre: r.nombre, cargo: r.cargo || '', empresa: r.empresa || '' })}
+                          className="p-2 rounded-lg" style={{ color: '#7c3aed' }} title="Editar perfil">
+                          <Pencil className="w-4 h-4" />
                         </button>
-                        <button onClick={() => handleQuitar(r.id)} className="p-2 rounded-lg"
-                          style={{ color: '#ef4444' }} title="Quitar del equipo">
-                          <Trash2 className="w-4 h-4" />
-                        </button>
+                        {!esOwner && (
+                          <>
+                            <button onClick={() => { setPassModal({ userId: r.id, nombre: r.nombre }); setNuevaPass('') }}
+                              className="p-2 rounded-lg" style={{ color: '#2563eb' }} title="Cambiar contraseña">
+                              <KeyRound className="w-4 h-4" />
+                            </button>
+                            <button onClick={() => handleQuitar(r.id)} className="p-2 rounded-lg"
+                              style={{ color: '#ef4444' }} title="Quitar del equipo">
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </>
+                        )}
                       </div>
                     )}
                   </div>
@@ -355,7 +409,7 @@ export default function EquipoTab() {
               <select value={vCiclo} onChange={(e) => setVCiclo(e.target.value)}
                 className="w-full p-3 rounded-xl outline-none text-sm"
                 style={{ backgroundColor: 'var(--bg-body)', border: '1px solid var(--border-color)', color: 'var(--text-main)' }}>
-                {Object.entries(CICLOS_LABELS).map(([id, label]) => (
+                {listarCiclos().map(({ id, label }) => (
                   <option key={id} value={id}>{label}</option>
                 ))}
               </select>
@@ -392,7 +446,7 @@ export default function EquipoTab() {
                     <div className="min-w-0">
                       <div className="font-bold text-sm truncate" style={{ color: 'var(--text-main)' }}>{v.nombre}</div>
                       <div className="text-[10px]" style={{ color: 'var(--text-muted)' }}>
-                        {(CICLOS_LABELS[v.ciclo_id] || v.ciclo_id).split(':')[0]} · desde {v.fecha_inicio}
+                        {etiquetaCiclo(v.ciclo_id).split(':')[0]} · desde {v.fecha_inicio}
                       </div>
                     </div>
                   </div>
@@ -446,7 +500,113 @@ export default function EquipoTab() {
                 style={{ backgroundColor: 'rgba(37,99,235,.1)', color: '#2563eb' }}>
                 <Printer className="w-4 h-4" /> Imprimir planilla
               </button>
+              <button onClick={() => planilla && descargarPlanillaCSV(planilla, nombreEquipo)}
+                className="flex items-center gap-1.5 px-3 py-2 rounded-xl font-bold text-xs transition"
+                style={{ backgroundColor: 'rgba(16,185,129,.1)', color: '#059669' }}>
+                <Download className="w-4 h-4" /> CSV
+              </button>
+              <button onClick={() => setPermutarOpen(true)}
+                className="flex items-center gap-1.5 px-3 py-2 rounded-xl font-bold text-xs transition"
+                style={{ backgroundColor: 'rgba(124,58,237,.1)', color: '#7c3aed' }}>
+                <Repeat className="w-4 h-4" /> Permutar
+              </button>
             </div>
+
+            {permutarOpen && equipoId && (
+              <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
+                style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}
+                onClick={() => setPermutarOpen(false)}>
+                <div className="p-6 rounded-2xl w-full max-w-sm shadow-2xl border animate-slide-up space-y-4"
+                  style={{ backgroundColor: 'var(--bg-card)', borderColor: 'var(--border-color)' }}
+                  onClick={(e) => e.stopPropagation()}>
+                  <div className="flex justify-between items-center">
+                    <h3 className="font-bold" style={{ color: 'var(--text-main)' }}>Permutar turnos</h3>
+                    <button onClick={() => setPermutarOpen(false)} style={{ color: 'var(--text-muted)' }}>
+                      <X className="w-5 h-5" />
+                    </button>
+                  </div>
+                  <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                    Elige el día y los dos miembros. Intercambiará el turno de ambos en esa fecha.
+                  </p>
+                  <input type="date" value={permutarFecha}
+                    onChange={(e) => setPermutarFecha(e.target.value)}
+                    className="w-full p-3 rounded-xl outline-none text-sm"
+                    style={{ backgroundColor: 'var(--bg-body)', border: '1px solid var(--border-color)', color: 'var(--text-main)' }} />
+                  <select value={permutarA} onChange={(e) => setPermutarA(e.target.value)}
+                    className="w-full p-3 rounded-xl outline-none text-sm"
+                    style={{ backgroundColor: 'var(--bg-body)', border: '1px solid var(--border-color)', color: 'var(--text-main)' }}>
+                    <option value="">— Miembro A —</option>
+                    {miembros.filter((m) => m.user_id !== permutarB).map((m) => (
+                      <option key={m.user_id} value={m.user_id}>
+                        {roster.find((r) => r.id === m.user_id)?.nombre || 'Miembro'} {m.rol === 'owner' ? '(dueño)' : ''}
+                      </option>
+                    ))}
+                  </select>
+                  <select value={permutarB} onChange={(e) => setPermutarB(e.target.value)}
+                    className="w-full p-3 rounded-xl outline-none text-sm"
+                    style={{ backgroundColor: 'var(--bg-body)', border: '1px solid var(--border-color)', color: 'var(--text-main)' }}>
+                    <option value="">— Miembro B —</option>
+                    {miembros.filter((m) => m.user_id !== permutarA).map((m) => (
+                      <option key={m.user_id} value={m.user_id}>
+                        {roster.find((r) => r.id === m.user_id)?.nombre || 'Miembro'} {m.rol === 'owner' ? '(dueño)' : ''}
+                      </option>
+                    ))}
+                  </select>
+                  <button onClick={handlePermutar}
+                    className="w-full py-3 rounded-xl font-bold text-white transition"
+                    style={{ backgroundColor: '#7c3aed' }}>
+                    INTERCAMBIAR TURNOS
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {perfilModal && equipoId && (
+              <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
+                style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}
+                onClick={() => setPerfilModal(null)}>
+                <div className="p-6 rounded-2xl w-full max-w-sm shadow-2xl border animate-slide-up space-y-4"
+                  style={{ backgroundColor: 'var(--bg-card)', borderColor: 'var(--border-color)' }}
+                  onClick={(e) => e.stopPropagation()}>
+                  <div className="flex justify-between items-center">
+                    <h3 className="font-bold" style={{ color: 'var(--text-main)' }}>Editar perfil</h3>
+                    <button onClick={() => setPerfilModal(null)} style={{ color: 'var(--text-muted)' }}>
+                      <X className="w-5 h-5" />
+                    </button>
+                  </div>
+                  <input value={perfilModal.nombre} onChange={(e) => setPerfilModal({ ...perfilModal, nombre: e.target.value })}
+                    placeholder="Nombre completo"
+                    className="w-full p-3 rounded-xl outline-none text-sm"
+                    style={{ backgroundColor: 'var(--bg-body)', border: '1px solid var(--border-color)', color: 'var(--text-main)' }} />
+                  <input value={perfilModal.cargo} onChange={(e) => setPerfilModal({ ...perfilModal, cargo: e.target.value })}
+                    placeholder="Cargo"
+                    className="w-full p-3 rounded-xl outline-none text-sm"
+                    style={{ backgroundColor: 'var(--bg-body)', border: '1px solid var(--border-color)', color: 'var(--text-main)' }} />
+                  <input value={perfilModal.empresa} onChange={(e) => setPerfilModal({ ...perfilModal, empresa: e.target.value })}
+                    placeholder="Empresa"
+                    className="w-full p-3 rounded-xl outline-none text-sm"
+                    style={{ backgroundColor: 'var(--bg-body)', border: '1px solid var(--border-color)', color: 'var(--text-main)' }} />
+                  <button onClick={handleGuardarPerfil}
+                    className="w-full py-3 rounded-xl font-bold text-white transition"
+                    style={{ backgroundColor: '#7c3aed' }}>
+                    GUARDAR PERFIL
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {(diasSinCoberturaDia.length > 0 || diasSinNadieDia.length > 0) && (
+              <div className="no-print p-3 rounded-xl border mb-3"
+                style={{ backgroundColor: 'rgba(239, 68, 68, 0.07)', color: '#b91c1c', borderColor: 'rgba(239,68,68,.3)' }}>
+                <div className="font-bold text-xs mb-1">⚠️ Días sin relevo ({MESES[month]})</div>
+                {diasSinCoberturaDia.length > 0 && (
+                  <div className="text-xs mb-1">Sin turnos asignados: <b>{diasSinCoberturaDia.join(', ')}</b></div>
+                )}
+                {diasSinNadieDia.length > 0 && (
+                  <div className="text-xs">Sin nadie de guardia: <b>{diasSinNadieDia.join(', ')}</b></div>
+                )}
+              </div>
+            )}
 
             {planilla ? (
               <>
@@ -481,7 +641,14 @@ export default function EquipoTab() {
                     <tbody>
                       {planilla.filas.map((fila) => (
                         <tr key={fila.miembroId}>
-                          <td className="pl-nombre" style={{ color: 'var(--text-main)' }}>{fila.nombre}</td>
+                          <td className="pl-nombre" style={{ color: 'var(--text-main)' }}>
+                          {fila.nombre}
+                          {(fila.cargo || fila.empresa) && (
+                            <div className="text-[8px] font-normal" style={{ color: 'var(--text-muted)' }}>
+                              {[fila.cargo, fila.empresa].filter(Boolean).join(' · ')}
+                            </div>
+                          )}
+                        </td>
                           {fila.celdas.map((celda, i) => (
                             <td key={i}
                               className="pl-celda"

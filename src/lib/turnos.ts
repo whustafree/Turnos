@@ -1,6 +1,6 @@
-import type { TurnoTipo, PatronCiclo, DiaTurno, TurnosData } from '../types'
-import { CICLOS_3X3 } from '../types'
-import { esDiaHabil } from './feriados'
+import type { TurnoTipo, PatronCiclo, DiaTurno, TurnosData, CicloPaso, CicloPersonalizado } from '../types'
+import { resolverCiclo } from '../types'
+import { esDiaHabil, nombreFeriado, etiquetaTurnoDia } from './feriados'
 
 // ─── Storage Keys ───
 const STORAGE_KEY = 'turnos_local_data'
@@ -22,6 +22,8 @@ interface LocalData {
     patronActual: PatronCiclo | null
     mesesBorrados: string[]
     patrones: PatronCiclo[]
+    /** Ciclos personalizados creados por el usuario (id → ciclo) */
+    customCiclos?: Record<string, CicloPersonalizado>
   }
   timestamp: number
 }
@@ -86,6 +88,7 @@ export function defaultPerfil(): LocalData['perfil'] {
     patronActual: null,
     patrones: [],
     mesesBorrados: [],
+    customCiclos: {},
   }
 }
 
@@ -96,7 +99,19 @@ export function normalizarPerfil(perfil: LocalData['perfil']): LocalData['perfil
   if (patrones.length === 0 && p.patronActual) {
     patrones.push(p.patronActual)
   }
-  return { ...p, patrones }
+  const customCiclos = p.customCiclos && typeof p.customCiclos === 'object' ? p.customCiclos : {}
+  return { ...p, patrones, customCiclos }
+}
+
+// ─── Ciclos personalizados ───
+export function crearCicloPersonalizado(
+  nombre: string,
+  pasos: CicloPaso[]
+): { id: string; ciclo: CicloPersonalizado } | null {
+  const limpio = nombre.trim()
+  if (!limpio || pasos.length === 0) return null
+  const id = `custom-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`
+  return { id, ciclo: { nombre: limpio, pasos } }
 }
 
 // ─── Theme ───
@@ -124,7 +139,7 @@ export function calcularTurnoOriginal(
 ): TurnoTipo | null {
   if (!patronActual) return null
   const { fechaInicio, cicloId } = patronActual
-  const patronTrabajo = CICLOS_3X3[cicloId]
+  const patronTrabajo = resolverCiclo(cicloId)
   if (!patronTrabajo || patronTrabajo.length === 0) return null
 
   const [iy, im, id] = fechaInicio.split('-').map(Number)
@@ -145,7 +160,7 @@ export function aplicarCiclo(
   patronActual: PatronCiclo
 ): TurnosData {
   const newTurnos = { ...turnos }
-  const patronTrabajo = CICLOS_3X3[patronActual.cicloId]
+  const patronTrabajo = resolverCiclo(patronActual.cicloId)
   if (!patronTrabajo || patronTrabajo.length === 0) return newTurnos
 
   const [iy, im, id] = patronActual.fechaInicio.split('-').map(Number)
@@ -195,6 +210,69 @@ export function obtenerDia(
   const auto = calcularTurnoOriginal(new Date(year, month, day), patronActual)
   if (auto) return { turnos: [auto], tipo: 'turno' }
   return undefined
+}
+
+// ─── Recordatorios inteligentes ───
+export interface RecordatorioDia {
+  fecha: string // YYYY-MM-DD
+  titulo: string
+  cuerpo: string
+  esTurno: boolean
+  esFeriado: boolean
+}
+
+const DIAS_SEMANA = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado']
+const MESES_NOMBRE = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre']
+
+// Construye los recordatorios para los próximos N días (aviso el día anterior a las 20:00).
+export function generarRecordatorios(
+  turnos: TurnosData,
+  patronActual: PatronCiclo | null,
+  mesesBorrados: string[],
+  dias = 15
+): RecordatorioDia[] {
+  const result: RecordatorioDia[] = []
+  const hoy = new Date()
+  for (let i = 0; i < dias; i++) {
+    const d = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate() + i)
+    const key = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`
+    const data = obtenerDia(turnos, d.getFullYear(), d.getMonth(), d.getDate(), patronActual, mesesBorrados)
+    const feriado = nombreFeriado(d)
+    const etiqueta = etiquetaTurnoDia(data ?? null)
+    const esTurno = etiqueta !== 'Descanso' && etiqueta !== 'Vacaciones' && etiqueta !== 'Administrativo'
+    const fechaTxt = `${DIAS_SEMANA[d.getDay()]} ${d.getDate()} de ${MESES_NOMBRE[d.getMonth()]}`
+    const feriadoTxt = feriado ? ` (${feriado} 🇨🇱)` : ''
+    result.push({
+      fecha: key,
+      titulo: esTurno ? `Mañana: ${etiqueta}` : 'TurnosApp',
+      cuerpo: esTurno
+        ? `Mañana toca ${etiqueta}. ${fechaTxt}${feriadoTxt}`
+        : feriado
+          ? `Mañana es ${feriado} 🇨🇱`
+          : `${fechaTxt}: sin turno (${etiqueta})`,
+      esTurno,
+      esFeriado: !!feriado,
+    })
+  }
+  return result
+}
+
+// Aviso único del turno de HOY (usado en navegador).
+export function obtenerAvisoHoy(
+  turnos: TurnosData,
+  patronActual: PatronCiclo | null,
+  mesesBorrados: string[]
+): { texto: string; esTurno: boolean } {
+  const hoy = new Date()
+  const data = obtenerDia(turnos, hoy.getFullYear(), hoy.getMonth(), hoy.getDate(), patronActual, mesesBorrados)
+  const feriado = nombreFeriado(hoy)
+  const etiqueta = etiquetaTurnoDia(data ?? null)
+  const esTurno = etiqueta !== 'Descanso' && etiqueta !== 'Vacaciones' && etiqueta !== 'Administrativo'
+  const feriadoTxt = feriado ? ` (${feriado} 🇨🇱)` : ''
+  return {
+    texto: esTurno ? `Hoy: ${etiqueta}${feriadoTxt} — buen turno! 💪` : `Hoy: ${etiqueta}${feriadoTxt}`,
+    esTurno,
+  }
 }
 
 // ─── Dashboard Stats ───
@@ -271,6 +349,82 @@ export function calcularStatsAnuales(turnos: TurnosData, year: number): StatsAnu
   })
 
   return s
+}
+
+// ─── Estadísticas mensuales ───
+export interface StatsMes {
+  mes: number
+  dias: number
+  noches: number
+  mixtos: number
+  extras: number
+  diasTrabajados: number
+  horas: number
+}
+
+/** Duracion estimada de un turno en horas (día o noche) */
+export const HORAS_POR_TURNO = 12
+
+export function calcularStatsMensuales(turnos: TurnosData, year: number): StatsMes[] {
+  const meses: StatsMes[] = []
+  for (let m = 0; m < 12; m++) {
+    const s: StatsMes = {
+      mes: m,
+      dias: 0,
+      noches: 0,
+      mixtos: 0,
+      extras: 0,
+      diasTrabajados: 0,
+      horas: 0,
+    }
+    const diasMes = turnos[year]?.[m]
+    if (diasMes) {
+      Object.keys(diasMes).forEach((d) => {
+        const dia = diasMes[Number(d)]
+        if (dia.tipo === 'vacaciones' || dia.tipo === 'administrativo') return
+        const turnosDia = dia.turnos || []
+        const tieDia = turnosDia.includes('dia')
+        const tieNoche = turnosDia.includes('noche')
+        const extrasT = turnosDia.filter((t) => t === 'extra-dia' || t === 'extra-noche').length
+        if (tieDia && tieNoche) s.mixtos++
+        if (tieDia) s.dias++
+        if (tieNoche) s.noches++
+        if (tieDia || tieNoche || extrasT > 0) {
+          s.diasTrabajados++
+          const base = tieDia ? HORAS_POR_TURNO : 0
+          const noche = tieNoche ? HORAS_POR_TURNO : 0
+          s.horas += base + noche + extrasT * HORAS_POR_TURNO
+        }
+        s.extras += extrasT
+      })
+    }
+    meses.push(s)
+  }
+  return meses
+}
+
+// ─── Proyección anual ───
+// Estima el total del año a partir de los meses con datos y los meses transcurridos.
+export interface ProyeccionAnual {
+  diasTrabajados: number
+  horas: number
+}
+
+export function calcularProyeccionAnual(turnos: TurnosData, year: number): ProyeccionAnual {
+  const meses = calcularStatsMensuales(turnos, year)
+  const avanzados = new Date()
+  const mesesTranscurridos =
+    year < avanzados.getFullYear() ? 12 : year === avanzados.getFullYear() ? avanzados.getMonth() : 0
+
+  const trabajados = meses.reduce((acc, s) => acc + s.diasTrabajados, 0)
+  const horas = meses.reduce((acc, s) => acc + s.horas, 0)
+
+  if (mesesTranscurridos <= 0) return { diasTrabajados: trabajados, horas }
+  const factor = 12 / Math.max(1, mesesTranscurridos)
+  return {
+    diasTrabajados: Math.round(trabajados * factor),
+    horas: Math.round(horas * factor),
+  }
 }
 
 // ─── Agrupar Ausencias ───

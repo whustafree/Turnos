@@ -10,8 +10,9 @@ import {
   calcularDashboardStats,
   agruparAusencias,
 } from '../lib/turnos'
+import { setCiclosPersonalizados } from '../types'
 import { useOfflineSync } from './useOfflineSync'
-import type { TurnoTipo, TurnosData, DiaTurno, PatronCiclo } from '../types'
+import type { TurnoTipo, TurnosData, DiaTurno, PatronCiclo, CicloPaso, CicloPersonalizado } from '../types'
 import type { AusenciaGroup } from '../lib/turnos'
 import { getPendingOps } from './useOfflineSync'
 
@@ -26,6 +27,7 @@ interface PerfilData {
   patronActual: PatronCiclo | null
   patrones: PatronCiclo[]
   mesesBorrados: string[]
+  customCiclos?: Record<string, CicloPersonalizado>
 }
 
 // ─── Normalizar datos del formato antiguo (vanilla JS) al nuevo ───
@@ -102,6 +104,11 @@ export function useCalendar(userId: string | undefined) {
       setPerfil(normalizarPerfil(local.perfil || defaultPerfil()))
     }
   }, [])
+
+  // Mantiene el registro de ciclos personalizados sincronizado con el perfil
+  useEffect(() => {
+    setCiclosPersonalizados(perfil.customCiclos)
+  }, [perfil.customCiclos])
 
   useEffect(() => {
     if (!userId) return
@@ -363,6 +370,37 @@ export function useCalendar(userId: string | undefined) {
     [persist, turnos]
   )
 
+  const saveCustomCiclo = useCallback(
+    (id: string, ciclo: CicloPersonalizado) => {
+      setPerfil((prev) => {
+        const customCiclos = { ...(prev.customCiclos || {}), [id]: ciclo }
+        const newPerfil = { ...prev, customCiclos }
+        persist(turnos, newPerfil)
+        return newPerfil
+      })
+    },
+    [persist, turnos]
+  )
+
+  const deleteCustomCiclo = useCallback(
+    (id: string) => {
+      setPerfil((prev) => {
+        const customCiclos = { ...(prev.customCiclos || {}) }
+        delete customCiclos[id]
+        const newPerfil = { ...prev, customCiclos }
+        // Si el ciclo eliminado era el activo, pasar a otro
+        if (prev.patronActual?.cicloId === id) {
+          const remanente = (prev.patrones || []).filter((p) => p.cicloId !== id)
+          newPerfil.patronActual = remanente[0] ?? null
+          newPerfil.patrones = remanente
+        }
+        persist(turnos, newPerfil)
+        return newPerfil
+      })
+    },
+    [persist, turnos]
+  )
+
   const openDay = useCallback(
     (day: number) => {
       setSelectedDay(day)
@@ -422,6 +460,8 @@ export function useCalendar(userId: string | undefined) {
     switchPatron,
     eliminarPatron,
     saveProfile,
+    saveCustomCiclo,
+    deleteCustomCiclo,
     openDay,
     getDashboardStats,
     getAusencias,

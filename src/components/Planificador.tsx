@@ -1,6 +1,6 @@
 import { useState } from 'react'
-import { CICLOS_LABELS } from '../types'
-import type { PatronCiclo } from '../types'
+import { listarCiclos, etiquetaCiclo } from '../types'
+import type { CicloPaso, PatronCiclo } from '../types'
 
 interface PlanificadorProps {
   year: number
@@ -11,11 +11,52 @@ interface PlanificadorProps {
   onSwitch: (patron: PatronCiclo) => void
   onDelete: (patron: PatronCiclo) => void
   onNavigate: (year: number, month: number) => void
+  onSaveCiclo?: (id: string, ciclo: { nombre: string; pasos: CicloPaso[] }) => void
+  onDeleteCiclo?: (id: string) => void
 }
 
-export default function Planificador({ year, month, activePattern, patrones, onApply, onSwitch, onDelete, onNavigate }: PlanificadorProps) {
+export default function Planificador({ year, month, activePattern, patrones, onApply, onSwitch, onDelete, onNavigate, onSaveCiclo, onDeleteCiclo }: PlanificadorProps) {
   const [cicloId, setCicloId] = useState('10')
   const [fechaInicio, setFechaInicio] = useState('')
+
+  // ─── Creador de ciclos personalizados ───
+  const [customNombre, setCustomNombre] = useState('')
+  const [customPasos, setCustomPasos] = useState<CicloPaso[]>([])
+  const [editingId, setEditingId] = useState<string | null>(null)
+
+  const ciclos = listarCiclos()
+
+  const PASO_LABEL: Partial<Record<CicloPaso, string>> = {
+    dia: 'Día',
+    noche: 'Noche',
+    descanso: 'Descanso',
+  }
+
+  const agregarPaso = (paso: CicloPaso) => setCustomPasos((p) => [...p, paso])
+  const quitarUltimo = () => setCustomPasos((p) => p.slice(0, -1))
+
+  const guardarCustom = () => {
+    if (!customNombre.trim()) {
+      alert('Ponle un nombre al ciclo')
+      return
+    }
+    if (customPasos.length === 0) {
+      alert('Agrega al menos un paso')
+      return
+    }
+    const id = editingId || `custom-${Date.now().toString(36)}`
+    onSaveCiclo?.(id, { nombre: customNombre.trim(), pasos: customPasos })
+    setCustomNombre('')
+    setCustomPasos([])
+    setEditingId(null)
+    setCicloId(id)
+  }
+
+  const editarCustom = (id: string, nombre: string, pasos: CicloPaso[]) => {
+    setEditingId(id)
+    setCustomNombre(nombre)
+    setCustomPasos(pasos)
+  }
 
   const handleApply = () => {
     if (!fechaInicio) return alert('Selecciona fecha')
@@ -70,12 +111,118 @@ export default function Planificador({ year, month, activePattern, patrones, onA
               color: 'var(--text-main)',
             }}
           >
-            {Object.entries(CICLOS_LABELS).map(([id, label]) => (
+            {ciclos.map(({ id, label }) => (
               <option key={id} value={id}>
                 {id}. {label}
               </option>
             ))}
           </select>
+        </div>
+
+        {/* ─── CREADOR DE CICLOS PERSONALIZADOS ─── */}
+        <div className="p-4 rounded-xl border space-y-3" style={{ borderColor: 'var(--border-color)', backgroundColor: 'var(--bg-body)' }}>
+          <div className="flex items-center justify-between">
+            <h4 className="font-bold text-sm" style={{ color: 'var(--text-main)' }}>
+              {editingId ? '✏️ Editar ciclo' : '➕ Ciclo personalizado'}
+            </h4>
+            {(customPasos.length > 0 || editingId) && (
+              <button
+                onClick={() => {
+                  setCustomPasos([])
+                  setCustomNombre('')
+                  setEditingId(null)
+                }}
+                className="px-2 py-1 rounded-lg text-[10px] font-bold"
+                style={{ backgroundColor: 'rgba(239, 68, 68, 0.1)', color: '#ef4444' }}
+              >
+                Limpiar
+              </button>
+            )}
+          </div>
+
+          <input
+            value={customNombre}
+            onChange={(e) => setCustomNombre(e.target.value)}
+            placeholder="Nombre (ej: 3x3 solo día, 6x2…)"
+            className="w-full p-3 rounded-xl outline-none text-sm"
+            style={{
+              backgroundColor: 'var(--bg-card)',
+              border: '1px solid var(--border-color)',
+              color: 'var(--text-main)',
+            }}
+          />
+
+          <div className="flex gap-2">
+            {(['dia', 'noche', 'descanso'] as CicloPaso[]).map((paso) => (
+              <button
+                key={paso}
+                onClick={() => agregarPaso(paso)}
+                className="flex-1 py-2.5 rounded-xl text-xs font-bold transition"
+                style={{
+                  backgroundColor:
+                    paso === 'dia'
+                      ? 'rgba(5, 150, 105, 0.12)'
+                      : paso === 'noche'
+                        ? 'rgba(67, 56, 202, 0.12)'
+                        : 'rgba(107, 114, 128, 0.12)',
+                  color:
+                    paso === 'dia'
+                      ? '#059669'
+                      : paso === 'noche'
+                        ? '#4338ca'
+                        : 'var(--text-muted)',
+                  border: `1px solid ${paso === 'dia' ? '#059669' : paso === 'noche' ? '#4338ca' : 'var(--border-color)'}`,
+                }}
+              >
+                + {PASO_LABEL[paso]}
+              </button>
+            ))}
+          </div>
+
+          {customPasos.length > 0 && (
+            <div>
+              <div className="flex flex-wrap gap-1.5 mb-2">
+                {customPasos.map((p, i) => (
+                  <span
+                    key={i}
+                    className="text-[10px] font-bold px-2.5 py-1 rounded-full"
+                    style={{
+                      backgroundColor:
+                        p === 'dia'
+                          ? 'rgba(5, 150, 105, 0.15)'
+                          : p === 'noche'
+                            ? 'rgba(67, 56, 202, 0.15)'
+                            : 'rgba(107, 114, 128, 0.15)',
+                      color: p === 'dia' ? '#059669' : p === 'noche' ? '#4338ca' : 'var(--text-muted)',
+                    }}
+                  >
+                    {PASO_LABEL[p]}
+                  </span>
+                ))}
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={quitarUltimo}
+                  className="px-3 py-2 rounded-lg text-[10px] font-bold"
+                  style={{ backgroundColor: 'rgba(239, 68, 68, 0.1)', color: '#ef4444' }}
+                >
+                  ← Quitar último
+                </button>
+                <span className="text-[10px] font-bold ml-auto" style={{ color: 'var(--text-muted)' }}>
+                  {customPasos.length} pasos · se repite
+                </span>
+              </div>
+            </div>
+          )}
+
+          <button
+            onClick={guardarCustom}
+            className="w-full py-3 rounded-xl font-bold text-white transition"
+            style={{ backgroundColor: '#7c3aed' }}
+          >
+            {editingId ? 'GUARDAR EDICIÓN' : 'GUARDAR CICLO'}{' '}
+            {customPasos.length > 0 && `(${customPasos.length} pasos)`}
+          </button>
         </div>
 
         <div>
@@ -127,7 +274,8 @@ export default function Planificador({ year, month, activePattern, patrones, onA
                 const isActive =
                   activePattern?.fechaInicio === p.fechaInicio &&
                   activePattern?.cicloId === p.cicloId
-                const label = CICLOS_LABELS[p.cicloId]
+                const label = etiquetaCiclo(p.cicloId)
+                const customCiclos = p.cicloId.startsWith('custom')
                 return (
                   <div
                     key={`${p.cicloId}-${p.fechaInicio}`}
@@ -156,6 +304,18 @@ export default function Planificador({ year, month, activePattern, patrones, onA
                           }}
                         >
                           Usar
+                        </button>
+                      )}
+                      {customCiclos && onDeleteCiclo && (
+                        <button
+                          onClick={() => onDeleteCiclo(p.cicloId)}
+                          className="px-2.5 py-1.5 rounded-lg text-[10px] font-bold transition"
+                          style={{
+                            backgroundColor: 'rgba(168, 85, 247, 0.12)',
+                            color: '#7c3aed',
+                          }}
+                        >
+                          Borrar ciclo
                         </button>
                       )}
                       <button

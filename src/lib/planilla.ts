@@ -5,6 +5,8 @@ export interface MiembroRoster {
   id: string
   nombre: string
   datos: TurnosData
+  cargo?: string
+  empresa?: string
   /** Miembro virtual (sin app): se le aplica su ciclo a la planilla automáticamente */
   virtual?: {
     cicloId: string
@@ -26,6 +28,8 @@ export type PlanillaCelda = 'D' | 'N' | 'DN' | 'V' | 'AD' | ''
 export interface FilaPlanilla {
   miembroId: string
   nombre: string
+  cargo?: string
+  empresa?: string
   celdas: PlanillaCelda[]
 }
 
@@ -60,6 +64,8 @@ export function construirPlanilla(miembros: MiembroRoster[], year: number, month
     .map((m) => ({
       miembroId: m.id,
       nombre: m.nombre,
+      cargo: m.cargo,
+      empresa: m.empresa,
       celdas: Array.from({ length: totalDias }, (_, i) =>
         celdaDeDia(datosDeMiembro(m, year, month), year, month, i + 1)
       ),
@@ -94,4 +100,38 @@ export function resumenPorDia(planilla: PlanillaMes): DiaResumen[] {
     })
   }
   return resumen
+}
+
+// Días del mes sin turnos asignados (posible falta de cobertura/relevo).
+export function diasSinCobertura(planilla: PlanillaMes): number[] {
+  const resumen = resumenPorDia(planilla)
+  return resumen.filter((r) => r.turnos === 0).map((r) => r.dia)
+}
+
+// Días donde ningún miembro del equipo está presente (todos de descanso/ausente).
+export function diasSinNadie(planilla: PlanillaMes): number[] {
+  return resumenPorDia(planilla)
+    .filter((r) => r.conTurno.length === 0)
+    .map((r) => r.dia)
+}
+
+// Exporta la planilla a CSV (compatible Excel). Usa ; como separador.
+export function planillaACSV(planilla: PlanillaMes): string {
+  const headers = ['Trabajador', ...Array.from({ length: planilla.totalDias }, (_, i) => i + 1)]
+  const filas = planilla.filas.map((f) => [f.nombre, ...f.celdas.map((c) => c || '')])
+  return [headers, ...filas].map((r) => r.join(';')).join('\r\n')
+}
+
+// Descarga la planilla como archivo .csv en el navegador.
+export function descargarPlanillaCSV(planilla: PlanillaMes, nombreEquipo: string): void {
+  const csv = planillaACSV(planilla)
+  const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `planilla-${nombreEquipo || 'equipo'}-${planilla.year}-${planilla.month + 1}.csv`
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
+  URL.revokeObjectURL(url)
 }

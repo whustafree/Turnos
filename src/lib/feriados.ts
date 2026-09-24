@@ -34,6 +34,27 @@ const FERIADOS_FN: Record<string, (y: number) => Date> = {
   'Navidad': (y) => new Date(y, 11, 25),
 }
 
+// Nombre del feriado para la fecha, o null si no es feriado.
+// Incluye el "lunes festivo" de la Ley Sana (hereda el nombre del domingo).
+export function nombreFeriado(fecha: Date): string | null {
+  const key = fecha.toDateString()
+  if (!esFeriado(fecha)) return null
+  const y = fecha.getFullYear()
+  for (const ay of [y - 1, y, y + 1]) {
+    for (const [nombre, fn] of Object.entries(FERIADOS_FN)) {
+      const d = fn(ay)
+      if (d.toDateString() === key) return nombre
+      // "Lunes festivo" por caer el feriado en domingo
+      if (d.getDay() === 0) {
+        const lunes = new Date(d)
+        lunes.setDate(lunes.getDate() + 1)
+        if (lunes.toDateString() === key) return nombre
+      }
+    }
+  }
+  return 'Feriado'
+}
+
 const feriadosCache: Record<number, Set<string>> = {}
 
 export function esFeriado(fecha: Date): boolean {
@@ -62,4 +83,20 @@ export function esDiaHabil(fecha: Date): boolean {
   if (diaSemana === 0 || diaSemana === 6) return false
   if (esFeriado(fecha)) return false
   return true
+}
+
+// Etiqueta legible del turno de una fecha: 'DÍA', 'NOCHE', 'DN', 'Descanso'
+// Con feriado: 'Feriado · DÍA'
+export function etiquetaTurnoDia(data: { turnos?: string[]; tipo?: string } | null): string {
+  if (data?.tipo === 'vacaciones') return 'Vacaciones'
+  if (data?.tipo === 'administrativo') return 'Administrativo'
+  const turnos = data?.turnos || []
+  const dia = turnos.includes('dia') && !turnos.includes('extra-dia')
+  const noche = turnos.includes('noche') && !turnos.includes('extra-noche')
+  const extraDia = turnos.includes('extra-dia')
+  const extraNoche = turnos.includes('extra-noche')
+  if (dia && noche) return 'DN'
+  if (dia || extraDia) return 'DÍA'
+  if (noche || extraNoche) return 'NOCHE'
+  return 'Descanso'
 }

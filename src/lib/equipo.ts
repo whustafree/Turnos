@@ -199,6 +199,52 @@ export async function eliminarVirtual(id: string): Promise<boolean> {
   }
 }
 
+// Permuta: intercambia un día entre dos miembros del equipo (RPC en permutas.sql)
+export async function intercambiarTurnosMiembros(
+  equipoId: string,
+  userA: string,
+  userB: string,
+  year: number,
+  month: number,
+  day: number
+): Promise<{ ok: boolean; error?: string }> {
+  try {
+    const { error } = await supabase.rpc('intercambiar_turnos_miembros', {
+      p_equipo_id: equipoId,
+      p_user_a: userA,
+      p_user_b: userB,
+      p_year: year,
+      p_month: month,
+      p_day: day,
+    })
+    if (error) return { ok: false, error: (error as any).message || error.message }
+    return { ok: true }
+  } catch (e: any) {
+    return { ok: false, error: e?.message || 'Error al permutar turnos' }
+  }
+}
+
+// El dueño edita el perfil (nombre/cargo/empresa) de un miembro de su equipo
+export async function actualizarPerfilMiembro(
+  equipoId: string,
+  userId: string,
+  perfil: { nombre?: string; cargo?: string; empresa?: string }
+): Promise<{ ok: boolean; error?: string }> {
+  try {
+    const { error } = await supabase.rpc('actualizar_perfil_miembro', {
+      p_equipo_id: equipoId,
+      p_user_id: userId,
+      p_nombre: perfil.nombre,
+      p_cargo: perfil.cargo,
+      p_empresa: perfil.empresa,
+    })
+    if (error) return { ok: false, error: (error as any).message || error.message }
+    return { ok: true }
+  } catch (e: any) {
+    return { ok: false, error: e?.message || 'Error al editar el perfil' }
+  }
+}
+
 // Descarga turnos + perfil de cada miembro para construir la planilla.
 // Incluye a los miembros virtuales (sin cuenta): se agregan con su ciclo.
 export async function cargarTurnosMiembros(
@@ -218,6 +264,8 @@ export async function cargarTurnosMiembros(
       roster.push({
         id: m.user_id,
         nombre: perfil.nombre || 'Miembro',
+        cargo: perfil.cargo,
+        empresa: perfil.empresa,
         datos: (data?.datos_turnos || {}) as TurnosData,
       })
     } catch {

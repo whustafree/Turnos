@@ -1,7 +1,8 @@
 import { useMemo, useRef } from 'react'
 import type { TurnosData, PatronCiclo } from '../types'
-import { Lock } from 'lucide-react'
+import { Lock, Flag } from 'lucide-react'
 import { obtenerDia } from '../lib/turnos'
+import { nombreFeriado } from '../lib/feriados'
 
 interface CalendarGridProps {
   year: number
@@ -35,11 +36,12 @@ export default function CalendarGrid({ year, month, turnos, patronActual, mesesB
       day: number
       data: (typeof turnos)[number][number][number] | undefined
       isToday: boolean
+      feriado: string | null
     }[] = []
 
     // Empty slots
     for (let i = 0; i < firstDay; i++) {
-      days.push({ day: 0, data: undefined, isToday: false })
+      days.push({ day: 0, data: undefined, isToday: false, feriado: null })
     }
 
     for (let d = 1; d <= totalDays; d++) {
@@ -48,7 +50,8 @@ export default function CalendarGrid({ year, month, turnos, patronActual, mesesB
         d === today.getDate() &&
         month === today.getMonth() &&
         year === today.getFullYear()
-      days.push({ day: d, data, isToday })
+      const feriado = nombreFeriado(new Date(year, month, d))
+      days.push({ day: d, data, isToday, feriado })
     }
 
     return days
@@ -75,11 +78,13 @@ export default function CalendarGrid({ year, month, turnos, patronActual, mesesB
           if (item.isToday) classes += ' today'
           if (data?.tipo === 'vacaciones') classes += ' vacaciones'
           if (data?.tipo === 'administrativo') classes += ' administrativo'
+          if (item.feriado) classes += ' feriado'
 
           return (
             <div
               key={item.day}
               className={classes}
+              title={item.feriado || undefined}
               onClick={() => {
                 // Si fue long-press no abrir dos veces
                 if (longPressed.current) {
@@ -121,8 +126,25 @@ export default function CalendarGrid({ year, month, turnos, patronActual, mesesB
                 >
                   {item.day}
                 </span>
-                {data?.locked && <Lock className="w-3 h-3 text-gray-400" />}
+                <span className="flex items-center gap-0.5">
+                  {item.feriado && (
+                    <Flag
+                      className="w-3 h-3"
+                      style={{ color: '#dc2626' }}
+                      aria-label={item.feriado}
+                    />
+                  )}
+                  {data?.locked && <Lock className="w-3 h-3 text-gray-400" />}
+                </span>
               </div>
+              {item.feriado && (
+                <div
+                  className="text-[7px] font-bold text-center leading-tight"
+                  style={{ color: '#dc2626' }}
+                >
+                  {item.feriado}
+                </div>
+              )}
 
               {/* Badges */}
               {data && (

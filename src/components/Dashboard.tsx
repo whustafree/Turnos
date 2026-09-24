@@ -1,5 +1,6 @@
-import { Calculator, Download, Upload, CalendarDays } from 'lucide-react'
-import { exportarJSON, exportarCSV, importarJSON, calcularStatsAnuales } from '../lib/turnos'
+import { useMemo, useState } from 'react'
+import { Calculator, Download, Upload, CalendarDays, ChevronDown, ChevronUp } from 'lucide-react'
+import { exportarJSON, exportarCSV, importarJSON, calcularStatsAnuales, calcularStatsMensuales, calcularProyeccionAnual, HORAS_POR_TURNO } from '../lib/turnos'
 import type { DashboardStats, TurnosData } from '../types'
 
 interface DashboardProps {
@@ -28,7 +29,12 @@ interface DashboardProps {
 export default function Dashboard({ stats, userName, userCargo, userEmpresa, onOpenProfile, onGoCalendar, turnos, profile, onImport }: DashboardProps) {
   const iniciales = (userName || 'U').split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()
 
-  const anual = calcularStatsAnuales(turnos, new Date().getFullYear())
+  const year = new Date().getFullYear()
+  const anual = calcularStatsAnuales(turnos, year)
+  const meses = useMemo(() => calcularStatsMensuales(turnos, year), [turnos, year])
+  const proyeccion = useMemo(() => calcularProyeccionAnual(turnos, year), [turnos, year])
+  const [showMeses, setShowMeses] = useState(false)
+  const MESES_CORTOS = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic']
 
   const adminPercent = Math.min(100, (stats.adminUsados / (stats.adminTotal || 1)) * 100)
   const vacPercent = Math.min(100, (stats.vacacionesUsadas / (stats.vacacionesTotal || 1)) * 100)
@@ -162,6 +168,11 @@ export default function Dashboard({ stats, userName, userCargo, userEmpresa, onO
             <div className="text-[9px] font-semibold" style={{ color: vacRestantes > 0 ? '#22c55e' : '#ef4444' }}>
               {vacRestantes > 0 ? `${vacRestantes} restantes` : 'Sin disponibles'}
             </div>
+            {vacRestantes > 0 && (
+              <div className="text-[8px] mt-0.5" style={{ color: '#d97706' }}>
+                ⏳ Proyección: vencen el 31 dic — planifícalas
+              </div>
+            )}
             <div className="w-full h-1.5 rounded-full mt-1" style={{ backgroundColor: 'rgba(234, 179, 8, 0.2)' }}>
               <div className="bg-yellow-500 h-full rounded-full" style={{ width: `${vacPercent}%` }} />
             </div>
@@ -233,6 +244,57 @@ export default function Dashboard({ stats, userName, userCargo, userEmpresa, onO
               <div className="text-[8px] font-bold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>{c.label}</div>
             </div>
           ))}
+        </div>
+
+        {/* ═══ PROYECCIÓN ANUAL ═══ */}
+        <div className="grid grid-cols-2 gap-2 mt-2">
+          <div className="p-2 rounded-xl border text-center" style={{ borderColor: 'var(--border-color)' }}>
+            <div className="text-base font-bold tabular-nums" style={{ color: 'var(--color-primary)' }}>
+              ≈{proyeccion.diasTrabajados} <span className="text-[9px] font-semibold">días/año</span>
+            </div>
+            <div className="text-[8px] font-bold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
+              Proyección {year}
+            </div>
+          </div>
+          <div className="p-2 rounded-xl border text-center" style={{ borderColor: 'var(--border-color)' }}>
+            <div className="text-base font-bold tabular-nums" style={{ color: 'var(--color-primary)' }}>
+              ≈{proyeccion.horas} <span className="text-[9px] font-semibold">hrs/año</span>
+            </div>
+            <div className="text-[8px] font-bold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
+              {HORAS_POR_TURNO}hrs/turno
+            </div>
+          </div>
+        </div>
+
+        {/* ═══ RESUMEN MENSUAL ═══ */}
+        <div className="mt-3">
+          <button
+            onClick={() => setShowMeses((v) => !v)}
+            className="w-full flex items-center justify-between px-3 py-2 rounded-xl border font-bold text-xs"
+            style={{ borderColor: 'var(--border-color)', backgroundColor: 'var(--bg-body)', color: 'var(--text-main)' }}
+          >
+            <span>📊 Turnos por mes ({year})</span>
+            {showMeses ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+          </button>
+          {showMeses && (
+            <div className="mt-2 grid grid-cols-2 sm:grid-cols-3 gap-1.5">
+              {meses.map((s) => (
+                <div key={s.mes} className="p-2 rounded-xl border text-center" style={{ borderColor: 'var(--border-color)' }}>
+                  <div className="text-[9px] font-bold uppercase" style={{ color: 'var(--text-muted)' }}>
+                    {MESES_CORTOS[s.mes]}
+                  </div>
+                  <div className="flex items-center justify-center gap-1 font-bold text-sm" style={{ color: 'var(--text-main)' }}>
+                    <span className="text-[10px]" style={{ color: '#059669' }}>{s.dias}D</span>
+                    <span className="text-[10px]" style={{ color: '#4338ca' }}>{s.noches}N</span>
+                    <span className="text-[10px]" style={{ color: '#7c3aed' }}>{s.mixtos}DN</span>
+                  </div>
+                  <div className="text-[8px]" style={{ color: 'var(--text-muted)' }}>
+                    {s.diasTrabajados} días · {s.horas} hs
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </div>

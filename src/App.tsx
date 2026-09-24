@@ -4,11 +4,11 @@ import { useAuth } from './hooks/useAuth'
 import { useCalendar } from './hooks/useCalendar'
 import { useSwipe } from './hooks/useSwipe'
 import { useUpdateCheck } from './hooks/useUpdateCheck'
-import { obtenerDia } from './lib/turnos'
-import { isNative, nativeReminderEnabled, scheduleDailyReminder } from './lib/native'
+import { obtenerDia, obtenerAvisoHoy, generarRecordatorios } from './lib/turnos'
+import { isNative, nativeReminderEnabled, scheduleDailyReminder, scheduleSmartReminders } from './lib/native'
 import { imprimirCalendario } from './lib/print'
 import type { TurnoTipo, TurnosData } from './types'
-import { CICLOS_LABELS } from './types'
+import { etiquetaCiclo } from './types'
 import LoginPage from './components/LoginPage'
 import UpdatePasswordPage from './components/UpdatePasswordPage'
 import Layout from './components/Layout'
@@ -21,6 +21,7 @@ import AusenciasList from './components/AusenciasList'
 import Planificador from './components/Planificador'
 import AdminConfigPanel from './components/AdminConfigPanel'
 import EquipoTab from './components/EquipoTab'
+import WeekStrip from './components/WeekStrip'
 
 type Tab = 'calendario' | 'planificar' | 'ausencias' | 'administrador' | 'equipo'
 const TABS: { id: Tab; label: string }[] = [
@@ -54,6 +55,8 @@ export default function App() {
     switchPatron,
     eliminarPatron,
     saveProfile,
+    saveCustomCiclo,
+    deleteCustomCiclo,
     openDay,
     getDashboardStats,
     getAusencias,
@@ -124,28 +127,49 @@ export default function App() {
 
   // ─── Recordatorio del turno de HOY (notificación del navegador) ───
   const notifDateKey = today.toDateString()
+  const avisoHoy = useMemo(
+    () => obtenerAvisoHoy(turnos, perfil.patronActual, perfil.mesesBorrados || []),
+    [turnos, perfil.patronActual, perfil.mesesBorrados]
+  )
   useEffect(() => {
     if (isNative()) return // en APK usamos notificación nativa (08:00)
     if (typeof Notification === 'undefined') return
     const enabled = localStorage.getItem('turnos_notif') === '1'
     if (!enabled || Notification.permission !== 'granted') return
     if (localStorage.getItem('turnos_notif_date') === notifDateKey) return
-    if (hoyInfo.isWork) {
+    if (avisoHoy.esTurno) {
       try {
         new Notification('TurnosApp', {
-          body: `${hoyInfo.label} — buen turno! 💪`,
+          body: avisoHoy.texto,
         })
       } catch { /* ignore */ }
       localStorage.setItem('turnos_notif_date', notifDateKey)
     }
-  }, [hoyInfo.label, hoyInfo.isWork, notifDateKey])
+  }, [avisoHoy.texto, avisoHoy.esTurno, notifDateKey])
+
+  // ─── Recordatorios inteligentes nativos (aviso el día anterior 20:00) ───
+  useEffect(() => {
+    if (!isNative()) return
+    if (!nativeReminderEnabled()) return
+    const recordatorios = generarRecordatorios(turnos, perfil.patronActual, perfil.mesesBorrados || [])
+    const items = recordatorios
+      .filter((r) => r.esTurno || r.esFeriado)
+      .map((r) => {
+        const [y, m, d] = r.fecha.split('-').map(Number)
+        const at = new Date(y, m, d - 1, 20, 0, 0) // el día anterior a las 20:00
+        return { at, body: r.cuerpo }
+      })
+      .filter((it) => it.at.getTime() > Date.now())
+    // Programa el próximo turno y el feriado más cercano (fechas futuras)
+    void scheduleSmartReminders(items.slice(0, 2))
+  }, [turnos, perfil.patronActual, perfil.mesesBorrados])
 
   const handleEnableNotifications = async () => {
     if (isNative()) {
-      const ok = await scheduleDailyReminder('Revisa tu turno de HOY en TurnosApp')
+      const ok = await scheduleDailyReminder('Revisa tu turno en TurnosApp')
       if (ok) {
         localStorage.setItem('turnos_notif', '1')
-        showError('✅ Recordatorios activados: notificación a las 08:00 todos los días.')
+        showError('✅ Recordatorios activados: te avisaré el día anterior a las 20:00.')
       } else {
         showError('Notificaciones no permitidas')
       }
@@ -532,7 +556,7 @@ export default function App() {
               const active =
                 perfil.patronActual?.fechaInicio === p.fechaInicio &&
                 perfil.patronActual?.cicloId === p.cicloId
-              const label = CICLOS_LABELS[p.cicloId]
+              const label = etiquetaCiclo(p.cicloId)
               return (
                 <div key={`${p.cicloId}-${p.fechaInicio}`} className="flex items-center gap-1">
                   <button
@@ -628,6 +652,18 @@ export default function App() {
             onTouchEnd={monthSwipeEnd}
           >
             <div className="print-month">{monthLabel}</div>
+            <WeekStrip
+              turnos={turnos}
+              patronActual={perfil.patronActual}
+              mesesBorrados={perfil.mesesBorrados || []}
+              onSelectDay={(date) => {
+                if (date.getMonth() !== month || date.getFullYear() !== year) {
+                  setMonth(date.getMonth())
+                  setYear(date.getFullYear())
+                }
+                handleDayClick(date.getDate())
+              }}
+            />
             <CalendarGrid
               year={year}
               month={month}
@@ -649,6 +685,8 @@ export default function App() {
             onApply={applyCiclo}
             onSwitch={switchPatron}
             onDelete={eliminarPatron}
+            onSaveCiclo={saveCustomCiclo}
+            onDeleteCiclo={deleteCustomCiclo}
             onNavigate={(y, m) => {
               setYear(y)
               setMonth(m)

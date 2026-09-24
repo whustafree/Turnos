@@ -1,5 +1,16 @@
-import { X } from 'lucide-react'
+import { useState } from 'react'
+import { X, Share2 } from 'lucide-react'
 import type { TurnoTipo, TurnosData } from '../types'
+import { etiquetaTurnoDia, nombreFeriado } from '../lib/feriados'
+
+function textoCompartir(year: number, month: number, day: number, dayData: { turnos?: string[]; tipo?: string } | null): string {
+  const fecha = new Date(year, month, day)
+  const ehFeriado = nombreFeriado(fecha)
+  const etiqueta = etiquetaTurnoDia(dayData ?? null)
+  const fechaTexto = fecha.toLocaleDateString('es-CL', { weekday: 'long', day: 'numeric', month: 'long' })
+  const feriadoTexto = ehFeriado ? ` (${ehFeriado} 🇨🇱)` : ''
+  return `${etiqueta === 'Descanso' ? 'Descanso 😴' : `Turno ${etiqueta}`} — ${fechaTexto}${feriadoTexto}`
+}
 
 interface TurnoModalProps {
   isOpen: boolean
@@ -26,10 +37,25 @@ export default function TurnoModal({
   onRemove,
   onClose,
 }: TurnoModalProps) {
+  const [shared, setShared] = useState(false)
   if (!isOpen || day === null) return null
 
   const dayData = turnos[year]?.[month]?.[day]
   const isLocked = dayData?.locked
+
+  const handleCompartir = async () => {
+    const texto = textoCompartir(year, month, day, dayData ?? null)
+    try {
+      await navigator.clipboard.writeText(texto)
+      setShared(true)
+      setTimeout(() => setShared(false), 1500)
+    } catch { /* ignore */ }
+  }
+
+  const handleWhatsApp = () => {
+    const texto = encodeURIComponent(textoCompartir(year, month, day, dayData ?? null))
+    window.open(`https://wa.me/?text=${texto}`, '_blank')
+  }
 
   return (
     <div
@@ -152,6 +178,32 @@ export default function TurnoModal({
               🌴 VACACIONES ✓
             </button>
           )}
+        </div>
+
+        <div className="grid grid-cols-2 gap-2 mb-4">
+          <button
+            onClick={handleCompartir}
+            className="p-3 rounded-lg font-bold text-sm flex items-center justify-center gap-2 transition"
+            style={{
+              backgroundColor: 'rgba(16, 185, 129, 0.12)',
+              color: '#059669',
+              border: '1px solid rgba(16, 185, 129, 0.25)',
+            }}
+          >
+            <Share2 className="w-4 h-4" />
+            {shared ? '¡Copiado!' : 'Compartir'}
+          </button>
+          <button
+            onClick={handleWhatsApp}
+            className="p-3 rounded-lg font-bold text-sm flex items-center justify-center gap-2 transition"
+            style={{
+              backgroundColor: 'rgba(37, 211, 102, 0.12)',
+              color: '#159a4b',
+              border: '1px solid rgba(37, 211, 102, 0.25)',
+            }}
+          >
+            WhatsApp
+          </button>
         </div>
 
         <div className="pt-3 mt-2" style={{ borderTop: '1px solid var(--border-color)' }}>

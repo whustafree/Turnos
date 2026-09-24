@@ -3,6 +3,8 @@ import {
   defaultPerfil,
   calcularDashboardStats,
   calcularStatsAnuales,
+  calcularStatsMensuales,
+  calcularProyeccionAnual,
   calcularTurnoOriginal,
   agruparAusencias,
   generarCartaVacaciones,
@@ -11,11 +13,13 @@ import {
   aplicarCiclo,
   obtenerDia,
   normalizarPerfil,
+  generarRecordatorios,
+  obtenerAvisoHoy,
 } from '../turnos'
-import { esDiaHabil, esFeriado } from '../feriados'
-import { construirPlanilla, celdaDeDia, resumenPorDia } from '../planilla'
+import { esDiaHabil, esFeriado, etiquetaTurnoDia } from '../feriados'
+import { construirPlanilla, celdaDeDia, resumenPorDia, diasSinCobertura, planillaACSV } from '../planilla'
 import type { TurnoTipo, TurnosData } from '../../types'
-import { CICLOS_3X3 } from '../../types'
+import { CICLOS_3X3, setCiclosPersonalizados, resolverCiclo } from '../../types'
 import type { PatronCiclo } from '../../types'
 
 // ─── LocalStorage Mock ───
@@ -408,6 +412,63 @@ describe('planilla', () => {
     expect(fila.celdas[1]).toBe('D')
     expect(fila.celdas[3]).toBe('') // día 4 = descanso
   })
+
+  it('diasSinCobertura marca los días sin turnos', () => {
+    const planilla = construirPlanilla(
+      [
+        {
+          id: 'a',
+          nombre: 'Ana',
+          datos: { 2026: { 0: { 1: { turnos: ['dia'] as TurnoTipo[], tipo: 'turno' as const } } } },
+        },
+      ],
+      2026,
+      0
+    )
+    expect(diasSinCobertura(planilla)[0]).toBe(2)
+    expect(diasSinCobertura(planilla)).not.toContain(1)
+  })
+
+  it('planillaACSV genera CSV con cabecera de días', () => {
+    const planilla = construirPlanilla(
+      [{ id: 'a', nombre: 'Ana', datos: {} }],
+      2026,
+      0
+    )
+    const csv = planillaACSV(planilla)
+    expect(csv).toContain('Trabajador;1;2;3')
+    expect(csv).toContain('Ana;')
+  })
+})
+
+// ─── Ciclos personalizados y presets nuevos ───
+describe('ciclos personalizados', () => {
+  beforeEach(() => setCiclosPersonalizados({}))
+
+  it('lista los presets nuevos (5x3, 4x2, 4x3, 5x2, 3x2)', () => {
+    expect(resolverCiclo('5x3')).toHaveLength(16)
+    expect(resolverCiclo('4x2')).toHaveLength(12)
+    expect(resolverCiclo('4x3')).toHaveLength(14)
+    expect(resolverCiclo('5x2')).toHaveLength(14)
+    expect(resolverCiclo('3x2')).toHaveLength(10)
+  })
+
+  it('resuelve un ciclo personalizado registrado y calcula turnos', () => {
+    setCiclosPersonalizados({
+      'custom-lun-vie': {
+        nombre: 'Lun a Vie',
+        pasos: ['dia', 'dia', 'dia', 'dia', 'dia', 'descanso', 'descanso'],
+      },
+    })
+    const patron: PatronCiclo = { fechaInicio: '2025-01-01', cicloId: 'custom-lun-vie' }
+    expect(calcularTurnoOriginal(new Date(2025, 0, 1), patron)).toBe('dia')
+    expect(calcularTurnoOriginal(new Date(2025, 0, 6), patron)).toBeNull() // descanso
+    expect(calcularTurnoOriginal(new Date(2025, 0, 8), patron)).toBe('dia') // repite
+  })
+
+  it('ignora ciclos personalizados de otros ids', () => {
+    expect(resolverCiclo('no-existe')).toBeUndefined()
+  })
 })
 
 // ─── Feriados Ley Sana ───
@@ -446,6 +507,52 @@ describe('calcularStatsAnuales', () => {
     expect(s.diasTrabajados).toBe(4)
     expect(s.vacaciones).toBe(1)
     expect(s.administrativos).toBe(1)
+  })
+})
+
+// ─── Estadísticas mensuales ───
+describe('calcularStatsMensuales', () => {
+  it('cuenta días, noches, mixtos y horas por mes', () => {
+    const turnos: TurnosData = {
+      2025: {
+        0: {
+          1: { turnos: ['dia'], tipo: 'turno' },
+          2: { turnos: ['noche'], tipo: 'turno' },
+          3: { turnos: ['dia', 'noche'], tipo: 'turno' }, // mixto
+          4: { turnos: ['extra-dia'], tipo: 'turno' },
+          5: { turnos: ['dia'], tipo: 'vacaciones' }, // no cuenta
+        },
+      },
+    }
+    const meses = calcularStatsMensuales(turnos, 2025)
+    expect(meses).toHaveLength(12)
+    const enero = meses[0]
+    expect(enero.dias).toBe(2) // día simple + mixto
+    expect(enero.noches).toBe(2) // noche simple + mixto
+    expect(enero.mixtos).toBe(1)
+    expect(enero.diasTrabajados).toBe(4) // 1,2,3,4 (no el de vacaciones)
+    // horas: dia(12) + noche(12) + mixto(24) + extra(12) = 60
+    expect(enero.horas).toBe(60)
+    expect(enero.extras).toBe(1)
+  })
+})
+
+describe('calcularProyeccionAnual', () => {
+  it('proyecta el año a partir de los meses con datos', () => {
+    // Solo enero con 4 días trabajados (meses transcurridos ~1 en simulacro de año actual)
+    const turnos: TurnosData = {
+      [new Date().getFullYear()]: {
+        0: {
+          1: { turnos: ['dia'], tipo: 'turno' },
+          2: { turnos: ['dia'], tipo: 'turno' },
+          3: { turnos: ['dia'], tipo: 'turno' },
+          4: { turnos: ['dia'], tipo: 'turno' },
+        },
+      },
+    }
+    const p = calcularProyeccionAnual(turnos, new Date().getFullYear())
+    expect(p.diasTrabajados).toBeGreaterThan(4)
+    expect(p.horas).toBeGreaterThan(48)
   })
 })
 
@@ -498,5 +605,35 @@ describe('saveLocalData / loadLocalData', () => {
 
   it('returns null for missing data', () => {
     expect(loadLocalData()).toBeNull()
+  })
+})
+
+// ─── etiquetaTurnoDia / recordatorios ───
+describe('etiquetaTurnoDia', () => {
+  it('classifica DIA / NOCHE / DN / Descanso / ausencias', () => {
+    expect(etiquetaTurnoDia({ turnos: ['dia'], tipo: 'turno' })).toBe('DÍA')
+    expect(etiquetaTurnoDia({ turnos: ['noche'], tipo: 'turno' })).toBe('NOCHE')
+    expect(etiquetaTurnoDia({ turnos: ['dia', 'noche'], tipo: 'turno' })).toBe('DN')
+    expect(etiquetaTurnoDia({ turnos: ['extra-dia'], tipo: 'turno' })).toBe('DÍA')
+    expect(etiquetaTurnoDia({ turnos: [], tipo: 'turno' })).toBe('Descanso')
+    expect(etiquetaTurnoDia({ turnos: ['dia'], tipo: 'vacaciones' })).toBe('Vacaciones')
+    expect(etiquetaTurnoDia({ turnos: ['dia'], tipo: 'administrativo' })).toBe('Administrativo')
+    expect(etiquetaTurnoDia(null)).toBe('Descanso')
+  })
+})
+
+describe('generarRecordatorios', () => {
+  it('genera 15 días y marca el turno de mañana', () => {
+    const recs = generarRecordatorios({}, null, [], 15)
+    expect(recs).toHaveLength(15)
+    expect(recs[0].fecha).toBeTruthy()
+  })
+})
+
+describe('obtenerAvisoHoy', () => {
+  it('devuelve texto y flag', () => {
+    const aviso = obtenerAvisoHoy({}, null, [])
+    expect(typeof aviso.texto).toBe('string')
+    expect(typeof aviso.esTurno).toBe('boolean')
   })
 })
