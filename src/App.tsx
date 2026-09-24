@@ -3,6 +3,7 @@ import { ChevronLeft, ChevronRight, Trash2, Printer, Bell, BellRing, ChevronUp, 
 import { useAuth } from './hooks/useAuth'
 import { useCalendar } from './hooks/useCalendar'
 import { useSwipe } from './hooks/useSwipe'
+import { useUpdateCheck } from './hooks/useUpdateCheck'
 import { obtenerDia } from './lib/turnos'
 import { isNative, nativeReminderEnabled, scheduleDailyReminder } from './lib/native'
 import type { TurnoTipo, TurnosData } from './types'
@@ -64,6 +65,13 @@ export default function App() {
   const [month, setMonth] = useState(today.getMonth())
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
   const errorTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // ─── Actualización automática de la APK ───
+  const update = useUpdateCheck()
+  const handleDownloadUpdate = () => {
+    if (!update.downloadUrl) return
+    window.open(update.downloadUrl, '_system')
+  }
 
   // ─── Modo compacto: minimizar la info para dejar el calendario grande ───
   const [minimized, setMinimized] = useState<boolean>(
@@ -362,6 +370,30 @@ export default function App() {
             }}
           >
             {errorMsg}
+          </div>
+        )}
+
+        {/* ═══ Aviso de actualización disponible ═══ */}
+        {update.available && (
+          <div
+            className="no-print flex items-center justify-between gap-3 px-4 py-3 rounded-xl shadow-sm animate-slide-up"
+            style={{
+              backgroundColor: 'rgba(37, 99, 235, 0.10)',
+              color: 'var(--color-primary)',
+              border: '1px solid rgba(37, 99, 235, 0.35)',
+            }}
+          >
+            <div className="min-w-0">
+              <p className="text-sm font-bold">🔄 ¡Nueva versión {update.latest} disponible!</p>
+              <p className="text-xs opacity-80">Estás en la versión {update.current}. Toque Descargar para instalar la actualización.</p>
+            </div>
+            <button
+              onClick={handleDownloadUpdate}
+              className="shrink-0 px-4 py-2 rounded-xl font-bold text-sm text-white transition"
+              style={{ backgroundColor: 'var(--color-primary)' }}
+            >
+              Descargar
+            </button>
           </div>
         )}
 
